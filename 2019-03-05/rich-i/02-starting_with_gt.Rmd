@@ -137,13 +137,10 @@ dplyr::tribble(
 
 
 
+
 ```{r gt_based_on_gt_dataset}
-# Autocomplete in RStudio; let's really look at this and marvel at the utility...
-
-# 
-
-# 
-
-# 
+#<gt dataset> %>%
+#  <preprocessing> %>%
+#  <gt stuff>
 ```
 
