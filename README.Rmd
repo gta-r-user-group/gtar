@@ -26,9 +26,9 @@ This package can be obtained from [GitHub](https://github.com/) with:
 
 ``` r
 # install.packages("devtools")
-devtools::install_github("gta-r-user-group/meetups")
+devtools::install_github("gta-r-user-group/gtar")
 ```
 
 ## Code of Conduct
 
-Please note that the 'meetups' project is released with a [Contributor Code of Conduct](CODE_OF_CONDUCT.md). By contributing to this project, you agree to abide by its terms.
+Please note that the 'gtar' project is released with a [Contributor Code of Conduct](CODE_OF_CONDUCT.md). By contributing to this project, you agree to abide by its terms.
