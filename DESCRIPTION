@@ -12,3 +12,10 @@ Description: This is the package for the 'Greater Toronto Area (GTA) R User
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
+URL: https://github.com/gta-r-user-group/meetups
+BugReports: https://github.com/gta-r-user-group/meetups/issues
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 6.1.1
+Imports: 
+    magrittr,
+    processx (>= 3.2.1)
