@@ -14,3 +14,8 @@ open_url(url, browser = "safari")
 \description{
 Open URL in a desktop web browser
 }
+\examples{
+# Open the RStudio website in a new Safari tab
+open_url("http://www.rstudio.com")
+
+}
