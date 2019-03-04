@@ -1,7 +1,6 @@
 Type: Package
 Package: gtar
-Title: This is the package for the 'Greater Toronto Area (GTA) R User Group'.
-    It contains materials from the meetings and it even contains R functions!
+Title: The 'Greater Toronto Area (GTA) R User Group'.
 Version: 0.0.0.9000
 Authors@R: 
     person("Richard", "Iannone", , "rich@rstudio.com", c("aut", "cre"),
