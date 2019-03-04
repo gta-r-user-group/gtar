@@ -1,0 +1,44 @@
+---
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(gtar)
+```
+
+## Helpful Links for Starting Out with R
+
+So, where do you start? You unfortunately have to install stuff. It isn't too much though. You basically need R (the language itself) and you really need RStudio (the IDE).
+
+```{r r_and_rstudio}
+open_url("https://cloud.r-project.org")
+open_url("https://www.rstudio.com/products/rstudio/download/#download")
+```
+
+How is R... organized? This graphic gives some sort of overview.
+
+```{r r_landscape}
+open_image("the_r_landscape.pdf")
+```
+
+Data science is so hot right now. Let's learn all about it with the R for Data Science book:
+
+```{r r4ds}
+open_url("https://r4ds.had.co.nz")
+```
+
+Want help, like right now? Check out RStudio Community:
+
+```{r rstudio_community}
+open_url("https://community.rstudio.com")
+```
+
+Let's talk some R on Twitter! Use the `#rstats` hashtag:
+
+```{r twitter_rstats}
+open_url("https://twitter.com/hashtag/rstats")
+```
+
+
