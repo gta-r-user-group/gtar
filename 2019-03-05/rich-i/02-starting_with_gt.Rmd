@@ -8,6 +8,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(gtar)
 library(gt)
 library(tidyverse)
+source(here::here("2019-03-05", "rich-i", "fun.R"))
 ```
 
 ## The **gt** Package! Making Tables Full of Data 
@@ -51,7 +52,7 @@ Do we know some datasets we could use?
 
 
 
-There are also datasets in **gt**. And they are...
+There are also datasets in **gt**. (Find out what they are called.)
 
 ```{gt datasets}
 # <get some gt datasets>
@@ -88,59 +89,34 @@ What do you notice about the function names in that page? I'm talking about the 
 
 Let's take one of the gt datasets and make a table, something that'll fit on a page of paper. We'll start small but we will keep adding stuff until we get something real deluxe.
 
-Vote on a dataset:
+We will vote on a dataset:
 
 ```{r}
 dplyr::tribble(
   ~dataset_name, ~votes,
   "countrypops", 1,
-  "sza",         5,
-  "gtcars",      7,
-  "sp500",       2,
-  "pizzaplace",  6,
-  "exibble",     5,
+  "sza",         2,
+  "gtcars",      3,
+  "sp500",       4,
+  "pizzaplace",  5,
+  "exibble",     6,
 ) %>%
-  gt() %>%
-  tab_style(
-    style = cells_styles(bkgd_color = "gold"),
-    locations = cells_data(
-      columns = TRUE,
-      rows = votes == max(votes)
-    )
-  ) %>%
-  tab_header(
-    title = md("The *Results* of the Vote!"),
-    subtitle = md("At this **Meetup**, everyone has voice...")
-  ) %>%
-  cols_label(
-    dataset_name = "Dataset",
-    votes = "Votes"
-  ) %>%
-  tab_options(
-    table.width = 550,
-    table.font.size = 26,
-    column_labels.font.size = 26
-  ) %>%
-  tab_footnote(
-    footnote = md(
-      paste0(
-        "This dataset lost *really* badly. Kinda sad. ",
-        emo::ji("sad")
-      )
-    ),
-    locations = cells_data(
-      columns = vars(dataset_name),
-      rows = votes == min(votes)
-    )
-  )
+  magic_fun()
+```
+
+
+
+
+```{r learn_about_dataset}
+# ???????
 ```
 
 
 
 
 ```{r gt_based_on_gt_dataset}
-#<gt dataset> %>%
-#  <preprocessing> %>%
-#  <gt stuff>
+# <gt dataset> %>%
+#   <preprocessing> %>%
+#   <gt stuff>
 ```
 
