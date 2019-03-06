@@ -20,7 +20,7 @@ knitr::opts_chunk$set(
 
 ## What we're about
 
-This group welcomes new and experienced R users to exchange knowledge and experience on using R for data analysis, data visualization, and data reporting. Information on the meetings can be found [on the Meetup page](https://www.meetup.com/Greater-Toronto-Area-GTA-R-Users-Group/).
+This group welcomes new and experienced R users to exchange knowledge and experience on using R for data analysis, data visualization, data reporting, or any other interesting use case. Information on upcoming and past meetings, such as location and time of our next meeting, can be found [on our Meetup page](https://www.meetup.com/Greater-Toronto-Area-GTA-R-Users-Group/).
 
 This package can be obtained from [GitHub](https://github.com/) with:
 
