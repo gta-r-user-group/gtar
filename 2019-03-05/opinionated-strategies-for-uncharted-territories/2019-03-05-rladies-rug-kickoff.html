@@ -1,0 +1,3556 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Opinionated Strategies for Uncharted Territories</title>
+    <meta charset="utf-8">
+    <meta name="author" content="Sharla Gelfand" />
+    <meta name="date" content="2019-03-05" />
+    <link href="libs/remark-css/default.css" rel="stylesheet" />
+    <link href="libs/remark-css/rladies.css" rel="stylesheet" />
+    <link href="libs/remark-css/rladies-fonts.css" rel="stylesheet" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# Opinionated Strategies for Uncharted Territories
+## R-Ladies / RUG Kickoff
+### Sharla Gelfand
+### March 5, 2019
+
+---
+
+
+
+
+# About me
+
+.pull-left[
+Statistician at the College of Nurses of Ontario.
+
+R user for almost 10 years.
+
+Twitter: @sharlagelfand
+
+Blog: [sharla.party](https://sharla.party)
+
+Slides: [bit.ly/rladies-to-kickoff](http://bit.ly/rladies-to-kickoff)
+
+]
+
+.pull-right[
+![](r-love.jpg)
+*Vicky Leta / Mashable*
+]
+
+---
+class: center, middle
+
+![](ttc-delays-news.png)
+*[https://www.cbc.ca/news/canada/toronto/ttc-trespassing-campaign-1.5011407](https://www.cbc.ca/news/canada/toronto/ttc-trespassing-campaign-1.5011407)* 
+
+---
+layout: true
+# TTC Delays
+
+---
+
+How did this "Unauthorized at track level" delay vary from line to line?
+
+What are the other main causes of delays?
+
+2018 TTC delays available from [Toronto Open Data](https://www.toronto.ca/city-government/data-research-maps/open-data/open-data-catalogue/transportation/#917dd033-1fe5-4ba8-04ca-f683eec89761).
+
+Let's answer some of my questions and go over some strategies about how to work with a new data set.
+
+---
+
+
+
+
+```r
+head(delays)
+```
+
+```
+## # A tibble: 6 x 8
+##   date       time  station               code  description                 
+##   &lt;date&gt;     &lt;chr&gt; &lt;chr&gt;                 &lt;chr&gt; &lt;chr&gt;                       
+## 1 2018-04-01 00:27 ST GEORGE BD STATION  MUSAN Unsanitary Vehicle          
+## 2 2018-04-01 07:56 FINCH STATION         TUSC  Operator Overspeeding       
+## 3 2018-04-01 08:00 YONGE UNIVERSITY LINE MUO   Miscellaneous Other         
+## 4 2018-04-01 09:50 KIPLING STATION       TUSC  Operator Overspeeding       
+## 5 2018-04-01 10:18 VICTORIA PARK STATION MUSC  Miscellaneous Speed Control 
+## 6 2018-04-01 10:22 KENNEDY BD STATION    EUNT  Equipment - No Trouble Found
+##   min_delay bound line 
+##       &lt;dbl&gt; &lt;chr&gt; &lt;chr&gt;
+## 1         8 W     BD   
+## 2         0 S     YU   
+## 3         0 &lt;NA&gt;  YU   
+## 4         0 W     BD   
+## 5         0 W     BD   
+## 6         3 W     BD
+```
+
+--
+
+Some qualities of this data were doctored (by me) for the purpose of Making A Point.
+
+---
+
+Top 5 causes for delay along each line (YU, BD, SHP, and SRT).
+
+
+```r
+library(dplyr)
+library(ggplot2)
+
+delays %&gt;%
+  group_by(line, code) %&gt;%
+  summarise(delays = sum(min_delay)) %&gt;%
+  arrange(-delays) %&gt;%
+  slice(1:5) %&gt;%
+  ggplot(aes(x = code,
+             y = delays)) +
+  geom_col() + 
+  facet_wrap(vars(line), 
+             scales = "free_y",
+             nrow = 4) +
+  coord_flip()
+```
+
+---
+
+![](2019-03-05-rladies-rug-kickoff_files/figure-html/delays-analysis-output-1.png)&lt;!-- --&gt;
+
+Immediate issues -- other "lines", inconsistent coding.
+
+---
+
+
+```r
+delays %&gt;%
+  filter(line %in% c("YU", "YU", 
+                     "SHP", "SRT")) %&gt;% 
+  ... same code as before
+```
+
+![](2019-03-05-rladies-rug-kickoff_files/figure-html/delays-main-lines-output-1.png)&lt;!-- --&gt;
+
+--
+
+Where's "Unauthorized at Track Level?"
+
+---
+
+Look at delay from campaign, "Unauthorized at Track Level"
+
+--
+
+
+```r
+delays %&gt;%
+  filter(description == "Unauthorized at Track Level") %&gt;%
+  group_by(line) %&gt;%
+  summarise(delays = sum(min_delay))
+```
+
+--
+
+
+```
+## # A tibble: 4 x 2
+##   line  delays
+##   &lt;chr&gt;  &lt;dbl&gt;
+## 1 BD        NA
+## 2 SHP        7
+## 3 SRT        0
+## 4 YU        NA
+```
+
+--
+
+Easy to remove `NA`s, but lurking consequences -- top 5 delays are wrong now too (any delays with `NA` wouldn't be considered).
+
+Some issues don't raise red flags, which is the worst of all.
+
+---
+layout:false
+
+# Strategies for working with new data
+
+How can you avoid this back and forth?
+
+Nicer to know *what* kind of issues you'll have to handle.
+
+Not reliant on "doing something with a specific variable" to spot an issue with it.
+
+---
+class: center, inverse, middle
+
+# 🔍 Visual summaries 🔍
+
+Learn about your data as fast as possible.
+
+---
+
+# `visdat` package
+
+Visual overview of data structure and missingness, created by [Nick Tierney](https://www.njtierney.com/).
+
+--
+
+
+```r
+library(visdat)
+
+vis_dat(delays)
+```
+
+&lt;img src="2019-03-05-rladies-rug-kickoff_files/figure-html/visdat-delays-output-1.png" width="80%" /&gt;
+
+Learn things about your data that weren't clear in the first few lines.
+
+---
+
+# `visdat` package
+
+
+```r
+vis_miss(delays)
+```
+
+&lt;img src="2019-03-05-rladies-rug-kickoff_files/figure-html/vismiss-delays-output-1.png" width="80%" /&gt;
+
+--
+
+What does it *mean* if `bound` is missing? Both directions? Specific `code`s?
+
+---
+
+# Variable summaries
+
+Attributes and possible values of each variable.
+
+--
+
+
+```r
+summary(delays[["min_delay"]])
+```
+
+--
+
+
+```
+##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+##   0.000   0.000   0.000   2.345   3.000 515.000    1036
+```
+
+--
+
+
+```r
+summary(delays[["line"]])
+```
+
+--
+
+
+```
+##    Length     Class      Mode 
+##     20735 character character
+```
+
+--
+
+`summary()` is very general. Sometimes it contains good information, sometimes it doesn't tell you anything at all.
+
+---
+
+# `skimr` package
+
+Gives summary statistics that you can quickly *skim* to understand your data, maintained by [Elin Waring](https://elinwaring.org/) and [Michael Quinn](http://michaelquinn32.github.io/).
+
+--
+
+Conforms to the principle of least surprise:
+
+* Design should match the user's experience, expectations, and mental models.
+
+--
+
+* If it doesn't, you should find out quickly!
+
+--
+
+Good way to develop a mental model if you *don't* have one.
+
+---
+
+
+```r
+library(skimr)
+
+skim(delays)
+```
+
+--
+
+
+```
+## Skim summary statistics
+##  n obs: 20735 
+##  n variables: 8 
+## 
+## ── Variable type:character ─────────────────────────────────────────────────────────
+##     variable missing complete     n min max empty n_unique
+##        bound    4698    16037 20735   1   1     0        6
+##         code       0    20735 20735   3   5     0      184
+##  description     462    20273 20735   4  58     0      132
+##         line     101    20634 20735   2  11     0       13
+##      station       0    20735 20735   8  22     0      201
+##         time       0    20735 20735   5   5     0     1388
+## 
+## ── Variable type:Date ──────────────────────────────────────────────────────────────
+##  variable missing complete     n        min        max     median n_unique
+##      date       0    20735 20735 2018-01-01 2018-12-31 2018-07-05      365
+## 
+## ── Variable type:numeric ───────────────────────────────────────────────────────────
+##   variable missing complete     n mean   sd p0 p25 p50 p75 p100     hist
+##  min_delay    1036    19699 20735 2.34 8.62  0   0   0   3  515 ▇▁▁▁▁▁▁▁
+```
+
+--
+
+The results are surprising, but good to know *now* instead of post iffy analysis.
+
+---
+
+# `skimr` package
+
+What are the different values of `bound`, for each `line`?
+
+
+
+```r
+delays %&gt;%
+  filter(line %in% c("BD", "YU", "SHP", "SRT")) %&gt;%
+  mutate(bound = as.factor(bound)) %&gt;%
+  group_by(line) %&gt;%
+  skim(bound)
+```
+
+--
+
+
+```
+## Skim summary statistics
+##  n obs: 20254 
+##  n variables: 8 
+##  group variables: line 
+## 
+## ── Variable type:factor ────────────────────────────────────────────────────────────
+##  line variable missing complete    n n_unique
+##    BD    bound    1902     7217 9119        5
+##   SHP    bound     107      405  512        3
+##   SRT    bound     173      544  717        5
+##    YU    bound    2055     7851 9906        6
+##                         top_counts ordered
+##  W: 3657, E: 3543, NA: 1902, N: 10   FALSE
+##      W: 219, E: 185, NA: 107, N: 1   FALSE
+##      S: 271, N: 261, NA: 173, E: 5   FALSE
+##  S: 4064, N: 3763, NA: 2055, E: 14   FALSE
+```
+
+---
+# Visual summaries
+
+Help to verify or develop a mental model.
+
+Highlight inconsistencies, indicate areas for further investigation.
+
+--
+
+Reliant on a person (you) looking at output.
+
+(And remembering what you're looking for).
+
+(And not leaving the project or your job).
+
+---
+class: middle, center, inverse
+
+# 🗣 Opinionated strategies 🗣 
+
+Codify assumptions so that your analysis fails if they're not met.
+
+---
+
+# `assertr` package
+
+Verify assumptions about data *early* in a pipeline. Created by [Tony Fischetti](http://www.onthelambda.com/).
+
+Forces you to outline assumptions about data, and alerts you of any deviations.
+
+Can help save you from the case where an analysis "look okay" but produces inaccurate results.
+
+---
+layout:true
+# `assertr` package
+
+---
+
+Use `assert()` for assumptions about columns of a data set.
+
+Throws an error and stops execution if the assumptions are violated.
+
+Returns original data set if assumptions are met.
+
+--
+
+Let's say I assume `line` is YU, BD, SHP, or SRT.
+
+
+```r
+library(assertr)
+
+delays %&gt;%
+  assert(in_set("YU", "BD", "SHP", "SRT"), line)
+```
+
+--
+
+
+```
+## Column 'line' violates assertion 'in_set("YU", "BD", "SHP", "SRT")' 380 times
+##     verb redux_fn                        predicate column index value
+## 1 assert       NA in_set("YU", "BD", "SHP", "SRT")   line    27 YU/BD
+## 2 assert       NA in_set("YU", "BD", "SHP", "SRT")   line    71 YU/BD
+## 3 assert       NA in_set("YU", "BD", "SHP", "SRT")   line   121 YU/BD
+## 4 assert       NA in_set("YU", "BD", "SHP", "SRT")   line   160 YU/BD
+## 5 assert       NA in_set("YU", "BD", "SHP", "SRT")   line   180 YU/BD
+##   [omitted 375 rows]
+```
+
+```
+## Error: assertr stopped execution
+```
+
+---
+
+.center[
+![](predicate-gator.jpg)
+
+*Mrs. Decatur's Little Gators*
+]
+
+--
+
+`in_set("YU", "BD", "SHP", "SRT")` says that the subject, `line`, only has values in the set "YU", "BD", "SHP", "SRT".
+
+---
+
+`in_set()`: checks that each value is within a set.
+
+--
+
+`within_bounds()`: checks that each numeric value is within the bounds
+
+
+```r
+delays %&gt;%
+  assert(within_bounds(0, Inf), min_delay)
+```
+
+--
+
+
+```
+## # A tibble: 20,735 x 8
+##    date       time  station               code 
+##    &lt;date&gt;     &lt;chr&gt; &lt;chr&gt;                 &lt;chr&gt;
+##  1 2018-04-01 00:27 ST GEORGE BD STATION  MUSAN
+##  2 2018-04-01 07:56 FINCH STATION         TUSC 
+##  3 2018-04-01 08:00 YONGE UNIVERSITY LINE MUO  
+##  4 2018-04-01 09:50 KIPLING STATION       TUSC 
+##  5 2018-04-01 10:18 VICTORIA PARK STATION MUSC 
+##  6 2018-04-01 10:22 KENNEDY BD STATION    EUNT 
+##  7 2018-04-01 10:30 WILSON STATION        PUMEL
+##  8 2018-04-01 11:20 WILSON STATION        TUSC 
+##  9 2018-04-01 11:32 FINCH WEST STATION    MUIRS
+## 10 2018-04-01 12:00 JANE STATION          TUSC 
+##    description                                                min_delay
+##    &lt;chr&gt;                                                          &lt;dbl&gt;
+##  1 Unsanitary Vehicle                                                 8
+##  2 Operator Overspeeding                                              0
+##  3 Miscellaneous Other                                                0
+##  4 Operator Overspeeding                                              0
+##  5 Miscellaneous Speed Control                                        0
+##  6 Equipment - No Trouble Found                                       3
+##  7 Escalator/Elevator Incident                                        0
+##  8 Operator Overspeeding                                              0
+##  9 Injured or ill Customer (In Station) - Medical Aid Refused         0
+## 10 Operator Overspeeding                                              0
+##    bound line 
+##    &lt;chr&gt; &lt;chr&gt;
+##  1 W     BD   
+##  2 S     YU   
+##  3 &lt;NA&gt;  YU   
+##  4 W     BD   
+##  5 W     BD   
+##  6 W     BD   
+##  7 &lt;NA&gt;  YU   
+##  8 S     YU   
+##  9 &lt;NA&gt;  YU   
+## 10 W     BD   
+## # … with 20,725 more rows
+```
+
+---
+
+`not_na()`: checks that each element is not NA.
+
+
+```r
+delays %&gt;%
+  assert(not_na, min_delay)
+```
+
+```
+## Column 'min_delay' violates assertion 'not_na' 1036 times
+##     verb redux_fn predicate    column index value
+## 1 assert       NA    not_na min_delay    24    NA
+## 2 assert       NA    not_na min_delay    87    NA
+## 3 assert       NA    not_na min_delay    99    NA
+## 4 assert       NA    not_na min_delay   124    NA
+## 5 assert       NA    not_na min_delay   135    NA
+##   [omitted 1031 rows]
+```
+
+```
+## Error: assertr stopped execution
+```
+
+--
+
+`is_uniq()`: checks if each value is unique; useful for IDs.
+
+--
+
+DIY! write a function that returns TRUE/FALSE.
+
+---
+
+`assertr` functions are designed to be piped together.
+
+By default, the first deviation will stop the pipe and return errors.
+
+--
+
+
+```r
+delays %&gt;%
+  assert(in_set("YU", "BD", "SHP", "SRT"), line) %&gt;%
+  assert(within_bounds(0, Inf), min_delay) %&gt;%
+  assert(not_na, min_delay)
+```
+
+--
+
+
+```
+## Column 'line' violates assertion 'in_set("YU", "BD", "SHP", "SRT")' 380 times
+##     verb redux_fn                        predicate column index value
+## 1 assert       NA in_set("YU", "BD", "SHP", "SRT")   line    27 YU/BD
+## 2 assert       NA in_set("YU", "BD", "SHP", "SRT")   line    71 YU/BD
+## 3 assert       NA in_set("YU", "BD", "SHP", "SRT")   line   121 YU/BD
+## 4 assert       NA in_set("YU", "BD", "SHP", "SRT")   line   160 YU/BD
+## 5 assert       NA in_set("YU", "BD", "SHP", "SRT")   line   180 YU/BD
+##   [omitted 375 rows]
+```
+
+```
+## Error: assertr stopped execution
+```
+
+Only names one violation.
+
+---
+
+Use `chain_start()` and `chain_end()` to get all errors.
+
+--
+
+
+```r
+delays %&gt;%
+  chain_start() %&gt;%
+  assert(in_set("YU", "BD", "SHP", "SRT"), line) %&gt;%
+  assert(within_bounds(0, Inf), min_delay) %&gt;%
+  assert(not_na, min_delay) %&gt;%
+  chain_end()
+```
+
+--
+
+
+```
+## There are 1416 errors across 2 verbs:
+## - 
+##        verb redux_fn                        predicate    column index
+## 1    assert       NA in_set("YU", "BD", "SHP", "SRT")      line    27
+## 2    assert       NA in_set("YU", "BD", "SHP", "SRT")      line    71
+## 3    assert       NA in_set("YU", "BD", "SHP", "SRT")      line   121
+## 4    assert       NA in_set("YU", "BD", "SHP", "SRT")      line   160
+## 5    assert       NA in_set("YU", "BD", "SHP", "SRT")      line   180
+## 6    assert       NA in_set("YU", "BD", "SHP", "SRT")      line   250
+## 7    assert       NA in_set("YU", "BD", "SHP", "SRT")      line   311
+## 8    assert       NA in_set("YU", "BD", "SHP", "SRT")      line   352
+## 9    assert       NA in_set("YU", "BD", "SHP", "SRT")      line   391
+## 10   assert       NA in_set("YU", "BD", "SHP", "SRT")      line   415
+## 11   assert       NA in_set("YU", "BD", "SHP", "SRT")      line   455
+## 12   assert       NA in_set("YU", "BD", "SHP", "SRT")      line   462
+## 13   assert       NA in_set("YU", "BD", "SHP", "SRT")      line   508
+## 14   assert       NA in_set("YU", "BD", "SHP", "SRT")      line   559
+## 15   assert       NA in_set("YU", "BD", "SHP", "SRT")      line   600
+## 16   assert       NA in_set("YU", "BD", "SHP", "SRT")      line   654
+## 17   assert       NA in_set("YU", "BD", "SHP", "SRT")      line   701
+## 18   assert       NA in_set("YU", "BD", "SHP", "SRT")      line   819
+## 19   assert       NA in_set("YU", "BD", "SHP", "SRT")      line   869
+## 20   assert       NA in_set("YU", "BD", "SHP", "SRT")      line   980
+## 21   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  1102
+## 22   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  1158
+## 23   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  1216
+## 24   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  1291
+## 25   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  1348
+## 26   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  1415
+## 27   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  1464
+## 28   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  1505
+## 29   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  1591
+## 30   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  1662
+## 31   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  1731
+## 32   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  1766
+## 33   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  1809
+## 34   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  1857
+## 35   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  1867
+## 36   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  1912
+## 37   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  1965
+## 38   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  2003
+## 39   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  2069
+## 40   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  2147
+## 41   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  2194
+## 42   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  2244
+## 43   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  2279
+## 44   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  2314
+## 45   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  2371
+## 46   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  2429
+## 47   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  2475
+## 48   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  2513
+## 49   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  2543
+## 50   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  2581
+## 51   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  2650
+## 52   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  2695
+## 53   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  2754
+## 54   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  2807
+## 55   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  2846
+## 56   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  2891
+## 57   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  2941
+## 58   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  3001
+## 59   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  3064
+## 60   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  3118
+## 61   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  3183
+## 62   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  3228
+## 63   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  3263
+## 64   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  3327
+## 65   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  3383
+## 66   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  3443
+## 67   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  3507
+## 68   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  3538
+## 69   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  3572
+## 70   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  3604
+## 71   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  3670
+## 72   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  3723
+## 73   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  3795
+## 74   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  3877
+## 75   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  3929
+## 76   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  3973
+## 77   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  4006
+## 78   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  4066
+## 79   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  4122
+## 80   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  4182
+## 81   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  4224
+## 82   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  4275
+## 83   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  4325
+## 84   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  4348
+## 85   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  4407
+## 86   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  4475
+## 87   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  4534
+## 88   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  4595
+## 89   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  4640
+## 90   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  4734
+## 91   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  4801
+## 92   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  4864
+## 93   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  4947
+## 94   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  4961
+## 95   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  4964
+## 96   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  5037
+## 97   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  5091
+## 98   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  5143
+## 99   assert       NA in_set("YU", "BD", "SHP", "SRT")      line  5210
+## 100  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  5288
+## 101  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  5365
+## 102  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  5414
+## 103  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  5453
+## 104  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  5520
+## 105  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  5580
+## 106  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  5636
+## 107  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  5696
+## 108  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  5748
+## 109  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  5795
+## 110  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  5830
+## 111  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  5932
+## 112  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  5989
+## 113  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  6029
+## 114  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  6089
+## 115  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  6134
+## 116  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  6177
+## 117  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  6247
+## 118  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  6317
+## 119  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  6379
+## 120  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  6444
+## 121  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  6516
+## 122  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  6536
+## 123  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  6561
+## 124  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  6573
+## 125  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  6681
+## 126  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  6726
+## 127  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  6770
+## 128  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  6857
+## 129  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  6934
+## 130  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  6995
+## 131  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  7068
+## 132  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  7111
+## 133  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  7152
+## 134  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  7212
+## 135  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  7277
+## 136  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  7344
+## 137  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  7416
+## 138  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  7479
+## 139  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  7586
+## 140  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  7650
+## 141  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  7716
+## 142  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  7800
+## 143  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  7865
+## 144  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  7884
+## 145  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  7931
+## 146  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  7980
+## 147  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  8024
+## 148  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  8108
+## 149  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  8178
+## 150  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  8179
+## 151  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  8247
+## 152  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  8314
+## 153  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  8381
+## 154  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  8442
+## 155  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  8447
+## 156  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  8511
+## 157  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  8552
+## 158  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  8586
+## 159  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  8668
+## 160  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  8746
+## 161  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  8814
+## 162  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  8878
+## 163  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  8947
+## 164  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  8990
+## 165  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  9020
+## 166  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  9094
+## 167  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  9152
+## 168  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  9217
+## 169  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  9270
+## 170  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  9331
+## 171  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  9400
+## 172  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  9457
+## 173  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  9516
+## 174  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  9589
+## 175  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  9655
+## 176  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  9701
+## 177  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  9718
+## 178  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  9813
+## 179  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  9884
+## 180  assert       NA in_set("YU", "BD", "SHP", "SRT")      line  9946
+## 181  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 10002
+## 182  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 10015
+## 183  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 10059
+## 184  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 10132
+## 185  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 10176
+## 186  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 10214
+## 187  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 10246
+## 188  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 10301
+## 189  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 10351
+## 190  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 10419
+## 191  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 10462
+## 192  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 10521
+## 193  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 10561
+## 194  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 10593
+## 195  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 10642
+## 196  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 10698
+## 197  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 10729
+## 198  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 10782
+## 199  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 10845
+## 200  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 10881
+## 201  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 10909
+## 202  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 10982
+## 203  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 11032
+## 204  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 11101
+## 205  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 11148
+## 206  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 11212
+## 207  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 11251
+## 208  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 11290
+## 209  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 11291
+## 210  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 11330
+## 211  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 11352
+## 212  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 11388
+## 213  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 11446
+## 214  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 11453
+## 215  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 11494
+## 216  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 11501
+## 217  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 11553
+## 218  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 11583
+## 219  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 11637
+## 220  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 11681
+## 221  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 11721
+## 222  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 11762
+## 223  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 11794
+## 224  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 11858
+## 225  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 11931
+## 226  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 12007
+## 227  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 12072
+## 228  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 12156
+## 229  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 12204
+## 230  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 12231
+## 231  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 12309
+## 232  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 12364
+## 233  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 12433
+## 234  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 12514
+## 235  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 12588
+## 236  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 12640
+## 237  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 12677
+## 238  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 12727
+## 239  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 12789
+## 240  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 12841
+## 241  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 12913
+## 242  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 12976
+## 243  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 13015
+## 244  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 13062
+## 245  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 13143
+## 246  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 13206
+## 247  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 13261
+## 248  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 13310
+## 249  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 13376
+## 250  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 13437
+## 251  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 13446
+## 252  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 13508
+## 253  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 13577
+## 254  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 13641
+## 255  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 13646
+## 256  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 13681
+## 257  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 13717
+## 258  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 13726
+## 259  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 13765
+## 260  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 13772
+## 261  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 13886
+## 262  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 13950
+## 263  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 14010
+## 264  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 14080
+## 265  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 14170
+## 266  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 14208
+## 267  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 14240
+## 268  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 14247
+## 269  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 14303
+## 270  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 14372
+## 271  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 14451
+## 272  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 14512
+## 273  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 14513
+## 274  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 14590
+## 275  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 14643
+## 276  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 14670
+## 277  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 14727
+## 278  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 14802
+## 279  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 14880
+## 280  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 14943
+## 281  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 14988
+## 282  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 15037
+## 283  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 15058
+## 284  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 15107
+## 285  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 15186
+## 286  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 15248
+## 287  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 15298
+## 288  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 15340
+## 289  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 15400
+## 290  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 15407
+## 291  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 15445
+## 292  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 15524
+## 293  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 15601
+## 294  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 15639
+## 295  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 15676
+## 296  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 15771
+## 297  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 15825
+## 298  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 15887
+## 299  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 15951
+## 300  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 16012
+## 301  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 16050
+## 302  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 16089
+## 303  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 16175
+## 304  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 16260
+## 305  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 16320
+## 306  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 16382
+## 307  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 16393
+## 308  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 16447
+## 309  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 16501
+## 310  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 16539
+## 311  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 16551
+## 312  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 16617
+## 313  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 16695
+## 314  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 16750
+## 315  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 16817
+## 316  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 16878
+## 317  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 16931
+## 318  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 17081
+## 319  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 17137
+## 320  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 17227
+## 321  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 17280
+## 322  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 17317
+## 323  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 17379
+## 324  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 17434
+## 325  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 17492
+## 326  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 17558
+## 327  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 17626
+## 328  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 17668
+## 329  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 17705
+## 330  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 17769
+## 331  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 17833
+## 332  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 17897
+## 333  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 17961
+## 334  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 18035
+## 335  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 18093
+## 336  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 18123
+## 337  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 18194
+## 338  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 18267
+## 339  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 18324
+## 340  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 18387
+## 341  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 18458
+## 342  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 18468
+## 343  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 18519
+## 344  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 18634
+## 345  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 18688
+## 346  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 18744
+## 347  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 18798
+## 348  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 18880
+## 349  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 18929
+## 350  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 19010
+## 351  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 19082
+## 352  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 19137
+## 353  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 19210
+## 354  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 19274
+## 355  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 19354
+## 356  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 19379
+## 357  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 19442
+## 358  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 19507
+## 359  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 19576
+## 360  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 19619
+## 361  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 19635
+## 362  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 19678
+## 363  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 19702
+## 364  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 19804
+## 365  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 19869
+## 366  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 19940
+## 367  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 19993
+## 368  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 20044
+## 369  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 20088
+## 370  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 20127
+## 371  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 20170
+## 372  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 20242
+## 373  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 20293
+## 374  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 20343
+## 375  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 20408
+## 376  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 20485
+## 377  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 20493
+## 378  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 20585
+## 379  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 20648
+## 380  assert       NA in_set("YU", "BD", "SHP", "SRT")      line 20726
+## 381  assert       NA                           not_na min_delay    24
+## 382  assert       NA                           not_na min_delay    87
+## 383  assert       NA                           not_na min_delay    99
+## 384  assert       NA                           not_na min_delay   124
+## 385  assert       NA                           not_na min_delay   135
+## 386  assert       NA                           not_na min_delay   143
+## 387  assert       NA                           not_na min_delay   179
+## 388  assert       NA                           not_na min_delay   196
+## 389  assert       NA                           not_na min_delay   210
+## 390  assert       NA                           not_na min_delay   224
+## 391  assert       NA                           not_na min_delay   251
+## 392  assert       NA                           not_na min_delay   278
+## 393  assert       NA                           not_na min_delay   290
+## 394  assert       NA                           not_na min_delay   301
+## 395  assert       NA                           not_na min_delay   312
+## 396  assert       NA                           not_na min_delay   318
+## 397  assert       NA                           not_na min_delay   321
+## 398  assert       NA                           not_na min_delay   324
+## 399  assert       NA                           not_na min_delay   333
+## 400  assert       NA                           not_na min_delay   341
+## 401  assert       NA                           not_na min_delay   346
+## 402  assert       NA                           not_na min_delay   350
+## 403  assert       NA                           not_na min_delay   352
+## 404  assert       NA                           not_na min_delay   374
+## 405  assert       NA                           not_na min_delay   392
+## 406  assert       NA                           not_na min_delay   395
+## 407  assert       NA                           not_na min_delay   397
+## 408  assert       NA                           not_na min_delay   433
+## 409  assert       NA                           not_na min_delay   451
+## 410  assert       NA                           not_na min_delay   464
+## 411  assert       NA                           not_na min_delay   478
+## 412  assert       NA                           not_na min_delay   495
+## 413  assert       NA                           not_na min_delay   506
+## 414  assert       NA                           not_na min_delay   521
+## 415  assert       NA                           not_na min_delay   602
+## 416  assert       NA                           not_na min_delay   608
+## 417  assert       NA                           not_na min_delay   654
+## 418  assert       NA                           not_na min_delay   666
+## 419  assert       NA                           not_na min_delay   690
+## 420  assert       NA                           not_na min_delay   700
+## 421  assert       NA                           not_na min_delay   708
+## 422  assert       NA                           not_na min_delay   715
+## 423  assert       NA                           not_na min_delay   716
+## 424  assert       NA                           not_na min_delay   829
+## 425  assert       NA                           not_na min_delay   864
+## 426  assert       NA                           not_na min_delay   891
+## 427  assert       NA                           not_na min_delay   900
+## 428  assert       NA                           not_na min_delay   904
+## 429  assert       NA                           not_na min_delay   998
+## 430  assert       NA                           not_na min_delay  1021
+## 431  assert       NA                           not_na min_delay  1042
+## 432  assert       NA                           not_na min_delay  1049
+## 433  assert       NA                           not_na min_delay  1077
+## 434  assert       NA                           not_na min_delay  1101
+## 435  assert       NA                           not_na min_delay  1119
+## 436  assert       NA                           not_na min_delay  1133
+## 437  assert       NA                           not_na min_delay  1140
+## 438  assert       NA                           not_na min_delay  1213
+## 439  assert       NA                           not_na min_delay  1246
+## 440  assert       NA                           not_na min_delay  1253
+## 441  assert       NA                           not_na min_delay  1292
+## 442  assert       NA                           not_na min_delay  1313
+## 443  assert       NA                           not_na min_delay  1328
+## 444  assert       NA                           not_na min_delay  1338
+## 445  assert       NA                           not_na min_delay  1365
+## 446  assert       NA                           not_na min_delay  1370
+## 447  assert       NA                           not_na min_delay  1389
+## 448  assert       NA                           not_na min_delay  1417
+## 449  assert       NA                           not_na min_delay  1428
+## 450  assert       NA                           not_na min_delay  1459
+## 451  assert       NA                           not_na min_delay  1533
+## 452  assert       NA                           not_na min_delay  1535
+## 453  assert       NA                           not_na min_delay  1536
+## 454  assert       NA                           not_na min_delay  1578
+## 455  assert       NA                           not_na min_delay  1596
+## 456  assert       NA                           not_na min_delay  1605
+## 457  assert       NA                           not_na min_delay  1606
+## 458  assert       NA                           not_na min_delay  1628
+## 459  assert       NA                           not_na min_delay  1662
+## 460  assert       NA                           not_na min_delay  1687
+## 461  assert       NA                           not_na min_delay  1700
+## 462  assert       NA                           not_na min_delay  1744
+## 463  assert       NA                           not_na min_delay  1745
+## 464  assert       NA                           not_na min_delay  1822
+## 465  assert       NA                           not_na min_delay  1848
+## 466  assert       NA                           not_na min_delay  1850
+## 467  assert       NA                           not_na min_delay  1864
+## 468  assert       NA                           not_na min_delay  1868
+## 469  assert       NA                           not_na min_delay  1902
+## 470  assert       NA                           not_na min_delay  1903
+## 471  assert       NA                           not_na min_delay  1925
+## 472  assert       NA                           not_na min_delay  1966
+## 473  assert       NA                           not_na min_delay  1974
+## 474  assert       NA                           not_na min_delay  2003
+## 475  assert       NA                           not_na min_delay  2010
+## 476  assert       NA                           not_na min_delay  2066
+## 477  assert       NA                           not_na min_delay  2139
+## 478  assert       NA                           not_na min_delay  2192
+## 479  assert       NA                           not_na min_delay  2194
+## 480  assert       NA                           not_na min_delay  2201
+## 481  assert       NA                           not_na min_delay  2207
+## 482  assert       NA                           not_na min_delay  2222
+## 483  assert       NA                           not_na min_delay  2243
+## 484  assert       NA                           not_na min_delay  2272
+## 485  assert       NA                           not_na min_delay  2274
+## 486  assert       NA                           not_na min_delay  2297
+## 487  assert       NA                           not_na min_delay  2300
+## 488  assert       NA                           not_na min_delay  2316
+## 489  assert       NA                           not_na min_delay  2363
+## 490  assert       NA                           not_na min_delay  2373
+## 491  assert       NA                           not_na min_delay  2374
+## 492  assert       NA                           not_na min_delay  2404
+## 493  assert       NA                           not_na min_delay  2418
+## 494  assert       NA                           not_na min_delay  2420
+## 495  assert       NA                           not_na min_delay  2489
+## 496  assert       NA                           not_na min_delay  2494
+## 497  assert       NA                           not_na min_delay  2526
+## 498  assert       NA                           not_na min_delay  2529
+## 499  assert       NA                           not_na min_delay  2543
+## 500  assert       NA                           not_na min_delay  2563
+## 501  assert       NA                           not_na min_delay  2567
+## 502  assert       NA                           not_na min_delay  2600
+## 503  assert       NA                           not_na min_delay  2642
+## 504  assert       NA                           not_na min_delay  2751
+## 505  assert       NA                           not_na min_delay  2775
+## 506  assert       NA                           not_na min_delay  2792
+## 507  assert       NA                           not_na min_delay  2910
+## 508  assert       NA                           not_na min_delay  2912
+## 509  assert       NA                           not_na min_delay  2985
+## 510  assert       NA                           not_na min_delay  3009
+## 511  assert       NA                           not_na min_delay  3016
+## 512  assert       NA                           not_na min_delay  3028
+## 513  assert       NA                           not_na min_delay  3051
+## 514  assert       NA                           not_na min_delay  3062
+## 515  assert       NA                           not_na min_delay  3090
+## 516  assert       NA                           not_na min_delay  3101
+## 517  assert       NA                           not_na min_delay  3115
+## 518  assert       NA                           not_na min_delay  3131
+## 519  assert       NA                           not_na min_delay  3154
+## 520  assert       NA                           not_na min_delay  3159
+## 521  assert       NA                           not_na min_delay  3193
+## 522  assert       NA                           not_na min_delay  3223
+## 523  assert       NA                           not_na min_delay  3232
+## 524  assert       NA                           not_na min_delay  3236
+## 525  assert       NA                           not_na min_delay  3279
+## 526  assert       NA                           not_na min_delay  3298
+## 527  assert       NA                           not_na min_delay  3301
+## 528  assert       NA                           not_na min_delay  3306
+## 529  assert       NA                           not_na min_delay  3317
+## 530  assert       NA                           not_na min_delay  3348
+## 531  assert       NA                           not_na min_delay  3358
+## 532  assert       NA                           not_na min_delay  3418
+## 533  assert       NA                           not_na min_delay  3421
+## 534  assert       NA                           not_na min_delay  3430
+## 535  assert       NA                           not_na min_delay  3436
+## 536  assert       NA                           not_na min_delay  3437
+## 537  assert       NA                           not_na min_delay  3445
+## 538  assert       NA                           not_na min_delay  3450
+## 539  assert       NA                           not_na min_delay  3462
+## 540  assert       NA                           not_na min_delay  3497
+## 541  assert       NA                           not_na min_delay  3504
+## 542  assert       NA                           not_na min_delay  3572
+## 543  assert       NA                           not_na min_delay  3582
+## 544  assert       NA                           not_na min_delay  3584
+## 545  assert       NA                           not_na min_delay  3591
+## 546  assert       NA                           not_na min_delay  3603
+## 547  assert       NA                           not_na min_delay  3607
+## 548  assert       NA                           not_na min_delay  3688
+## 549  assert       NA                           not_na min_delay  3708
+## 550  assert       NA                           not_na min_delay  3744
+## 551  assert       NA                           not_na min_delay  3759
+## 552  assert       NA                           not_na min_delay  3761
+## 553  assert       NA                           not_na min_delay  3812
+## 554  assert       NA                           not_na min_delay  3813
+## 555  assert       NA                           not_na min_delay  3837
+## 556  assert       NA                           not_na min_delay  3847
+## 557  assert       NA                           not_na min_delay  3871
+## 558  assert       NA                           not_na min_delay  3872
+## 559  assert       NA                           not_na min_delay  3887
+## 560  assert       NA                           not_na min_delay  3905
+## 561  assert       NA                           not_na min_delay  3921
+## 562  assert       NA                           not_na min_delay  3954
+## 563  assert       NA                           not_na min_delay  3964
+## 564  assert       NA                           not_na min_delay  3967
+## 565  assert       NA                           not_na min_delay  4034
+## 566  assert       NA                           not_na min_delay  4038
+## 567  assert       NA                           not_na min_delay  4056
+## 568  assert       NA                           not_na min_delay  4083
+## 569  assert       NA                           not_na min_delay  4222
+## 570  assert       NA                           not_na min_delay  4237
+## 571  assert       NA                           not_na min_delay  4291
+## 572  assert       NA                           not_na min_delay  4293
+## 573  assert       NA                           not_na min_delay  4307
+## 574  assert       NA                           not_na min_delay  4323
+## 575  assert       NA                           not_na min_delay  4329
+## 576  assert       NA                           not_na min_delay  4358
+## 577  assert       NA                           not_na min_delay  4397
+## 578  assert       NA                           not_na min_delay  4407
+## 579  assert       NA                           not_na min_delay  4419
+## 580  assert       NA                           not_na min_delay  4422
+## 581  assert       NA                           not_na min_delay  4427
+## 582  assert       NA                           not_na min_delay  4428
+## 583  assert       NA                           not_na min_delay  4430
+## 584  assert       NA                           not_na min_delay  4437
+## 585  assert       NA                           not_na min_delay  4456
+## 586  assert       NA                           not_na min_delay  4469
+## 587  assert       NA                           not_na min_delay  4472
+## 588  assert       NA                           not_na min_delay  4527
+## 589  assert       NA                           not_na min_delay  4540
+## 590  assert       NA                           not_na min_delay  4554
+## 591  assert       NA                           not_na min_delay  4565
+## 592  assert       NA                           not_na min_delay  4640
+## 593  assert       NA                           not_na min_delay  4679
+## 594  assert       NA                           not_na min_delay  4690
+## 595  assert       NA                           not_na min_delay  4692
+## 596  assert       NA                           not_na min_delay  4716
+## 597  assert       NA                           not_na min_delay  4790
+## 598  assert       NA                           not_na min_delay  4828
+## 599  assert       NA                           not_na min_delay  4842
+## 600  assert       NA                           not_na min_delay  4858
+## 601  assert       NA                           not_na min_delay  4875
+## 602  assert       NA                           not_na min_delay  4893
+## 603  assert       NA                           not_na min_delay  4901
+## 604  assert       NA                           not_na min_delay  4942
+## 605  assert       NA                           not_na min_delay  4962
+## 606  assert       NA                           not_na min_delay  4984
+## 607  assert       NA                           not_na min_delay  5005
+## 608  assert       NA                           not_na min_delay  5014
+## 609  assert       NA                           not_na min_delay  5036
+## 610  assert       NA                           not_na min_delay  5076
+## 611  assert       NA                           not_na min_delay  5105
+## 612  assert       NA                           not_na min_delay  5121
+## 613  assert       NA                           not_na min_delay  5175
+## 614  assert       NA                           not_na min_delay  5181
+## 615  assert       NA                           not_na min_delay  5192
+## 616  assert       NA                           not_na min_delay  5203
+## 617  assert       NA                           not_na min_delay  5214
+## 618  assert       NA                           not_na min_delay  5226
+## 619  assert       NA                           not_na min_delay  5262
+## 620  assert       NA                           not_na min_delay  5279
+## 621  assert       NA                           not_na min_delay  5284
+## 622  assert       NA                           not_na min_delay  5292
+## 623  assert       NA                           not_na min_delay  5309
+## 624  assert       NA                           not_na min_delay  5320
+## 625  assert       NA                           not_na min_delay  5332
+## 626  assert       NA                           not_na min_delay  5349
+## 627  assert       NA                           not_na min_delay  5352
+## 628  assert       NA                           not_na min_delay  5355
+## 629  assert       NA                           not_na min_delay  5356
+## 630  assert       NA                           not_na min_delay  5359
+## 631  assert       NA                           not_na min_delay  5372
+## 632  assert       NA                           not_na min_delay  5374
+## 633  assert       NA                           not_na min_delay  5381
+## 634  assert       NA                           not_na min_delay  5420
+## 635  assert       NA                           not_na min_delay  5432
+## 636  assert       NA                           not_na min_delay  5492
+## 637  assert       NA                           not_na min_delay  5533
+## 638  assert       NA                           not_na min_delay  5536
+## 639  assert       NA                           not_na min_delay  5635
+## 640  assert       NA                           not_na min_delay  5636
+## 641  assert       NA                           not_na min_delay  5646
+## 642  assert       NA                           not_na min_delay  5657
+## 643  assert       NA                           not_na min_delay  5682
+## 644  assert       NA                           not_na min_delay  5707
+## 645  assert       NA                           not_na min_delay  5743
+## 646  assert       NA                           not_na min_delay  5778
+## 647  assert       NA                           not_na min_delay  5796
+## 648  assert       NA                           not_na min_delay  5915
+## 649  assert       NA                           not_na min_delay  5925
+## 650  assert       NA                           not_na min_delay  5990
+## 651  assert       NA                           not_na min_delay  6001
+## 652  assert       NA                           not_na min_delay  6020
+## 653  assert       NA                           not_na min_delay  6042
+## 654  assert       NA                           not_na min_delay  6076
+## 655  assert       NA                           not_na min_delay  6077
+## 656  assert       NA                           not_na min_delay  6094
+## 657  assert       NA                           not_na min_delay  6104
+## 658  assert       NA                           not_na min_delay  6117
+## 659  assert       NA                           not_na min_delay  6122
+## 660  assert       NA                           not_na min_delay  6130
+## 661  assert       NA                           not_na min_delay  6222
+## 662  assert       NA                           not_na min_delay  6240
+## 663  assert       NA                           not_na min_delay  6244
+## 664  assert       NA                           not_na min_delay  6266
+## 665  assert       NA                           not_na min_delay  6291
+## 666  assert       NA                           not_na min_delay  6300
+## 667  assert       NA                           not_na min_delay  6303
+## 668  assert       NA                           not_na min_delay  6312
+## 669  assert       NA                           not_na min_delay  6325
+## 670  assert       NA                           not_na min_delay  6336
+## 671  assert       NA                           not_na min_delay  6344
+## 672  assert       NA                           not_na min_delay  6349
+## 673  assert       NA                           not_na min_delay  6389
+## 674  assert       NA                           not_na min_delay  6391
+## 675  assert       NA                           not_na min_delay  6430
+## 676  assert       NA                           not_na min_delay  6464
+## 677  assert       NA                           not_na min_delay  6485
+## 678  assert       NA                           not_na min_delay  6506
+## 679  assert       NA                           not_na min_delay  6515
+## 680  assert       NA                           not_na min_delay  6517
+## 681  assert       NA                           not_na min_delay  6524
+## 682  assert       NA                           not_na min_delay  6531
+## 683  assert       NA                           not_na min_delay  6557
+## 684  assert       NA                           not_na min_delay  6587
+## 685  assert       NA                           not_na min_delay  6590
+## 686  assert       NA                           not_na min_delay  6613
+## 687  assert       NA                           not_na min_delay  6615
+## 688  assert       NA                           not_na min_delay  6617
+## 689  assert       NA                           not_na min_delay  6621
+## 690  assert       NA                           not_na min_delay  6635
+## 691  assert       NA                           not_na min_delay  6640
+## 692  assert       NA                           not_na min_delay  6647
+## 693  assert       NA                           not_na min_delay  6663
+## 694  assert       NA                           not_na min_delay  6687
+## 695  assert       NA                           not_na min_delay  6693
+## 696  assert       NA                           not_na min_delay  6700
+## 697  assert       NA                           not_na min_delay  6703
+## 698  assert       NA                           not_na min_delay  6710
+## 699  assert       NA                           not_na min_delay  6712
+## 700  assert       NA                           not_na min_delay  6718
+## 701  assert       NA                           not_na min_delay  6736
+## 702  assert       NA                           not_na min_delay  6739
+## 703  assert       NA                           not_na min_delay  6741
+## 704  assert       NA                           not_na min_delay  6769
+## 705  assert       NA                           not_na min_delay  6779
+## 706  assert       NA                           not_na min_delay  6781
+## 707  assert       NA                           not_na min_delay  6786
+## 708  assert       NA                           not_na min_delay  6857
+## 709  assert       NA                           not_na min_delay  6880
+## 710  assert       NA                           not_na min_delay  6886
+## 711  assert       NA                           not_na min_delay  6898
+## 712  assert       NA                           not_na min_delay  6900
+## 713  assert       NA                           not_na min_delay  6930
+## 714  assert       NA                           not_na min_delay  6939
+## 715  assert       NA                           not_na min_delay  6948
+## 716  assert       NA                           not_na min_delay  6979
+## 717  assert       NA                           not_na min_delay  7008
+## 718  assert       NA                           not_na min_delay  7028
+## 719  assert       NA                           not_na min_delay  7076
+## 720  assert       NA                           not_na min_delay  7117
+## 721  assert       NA                           not_na min_delay  7134
+## 722  assert       NA                           not_na min_delay  7143
+## 723  assert       NA                           not_na min_delay  7193
+## 724  assert       NA                           not_na min_delay  7195
+## 725  assert       NA                           not_na min_delay  7237
+## 726  assert       NA                           not_na min_delay  7246
+## 727  assert       NA                           not_na min_delay  7400
+## 728  assert       NA                           not_na min_delay  7454
+## 729  assert       NA                           not_na min_delay  7460
+## 730  assert       NA                           not_na min_delay  7465
+## 731  assert       NA                           not_na min_delay  7486
+## 732  assert       NA                           not_na min_delay  7496
+## 733  assert       NA                           not_na min_delay  7518
+## 734  assert       NA                           not_na min_delay  7562
+## 735  assert       NA                           not_na min_delay  7604
+## 736  assert       NA                           not_na min_delay  7621
+## 737  assert       NA                           not_na min_delay  7629
+## 738  assert       NA                           not_na min_delay  7661
+## 739  assert       NA                           not_na min_delay  7662
+## 740  assert       NA                           not_na min_delay  7706
+## 741  assert       NA                           not_na min_delay  7741
+## 742  assert       NA                           not_na min_delay  7751
+## 743  assert       NA                           not_na min_delay  7779
+## 744  assert       NA                           not_na min_delay  7794
+## 745  assert       NA                           not_na min_delay  7802
+## 746  assert       NA                           not_na min_delay  7813
+## 747  assert       NA                           not_na min_delay  7823
+## 748  assert       NA                           not_na min_delay  7826
+## 749  assert       NA                           not_na min_delay  7831
+## 750  assert       NA                           not_na min_delay  7886
+## 751  assert       NA                           not_na min_delay  7904
+## 752  assert       NA                           not_na min_delay  7908
+## 753  assert       NA                           not_na min_delay  7948
+## 754  assert       NA                           not_na min_delay  7987
+## 755  assert       NA                           not_na min_delay  7995
+## 756  assert       NA                           not_na min_delay  7998
+## 757  assert       NA                           not_na min_delay  8019
+## 758  assert       NA                           not_na min_delay  8037
+## 759  assert       NA                           not_na min_delay  8038
+## 760  assert       NA                           not_na min_delay  8042
+## 761  assert       NA                           not_na min_delay  8057
+## 762  assert       NA                           not_na min_delay  8074
+## 763  assert       NA                           not_na min_delay  8095
+## 764  assert       NA                           not_na min_delay  8106
+## 765  assert       NA                           not_na min_delay  8115
+## 766  assert       NA                           not_na min_delay  8130
+## 767  assert       NA                           not_na min_delay  8141
+## 768  assert       NA                           not_na min_delay  8150
+## 769  assert       NA                           not_na min_delay  8189
+## 770  assert       NA                           not_na min_delay  8202
+## 771  assert       NA                           not_na min_delay  8210
+## 772  assert       NA                           not_na min_delay  8237
+## 773  assert       NA                           not_na min_delay  8255
+## 774  assert       NA                           not_na min_delay  8339
+## 775  assert       NA                           not_na min_delay  8408
+## 776  assert       NA                           not_na min_delay  8427
+## 777  assert       NA                           not_na min_delay  8440
+## 778  assert       NA                           not_na min_delay  8450
+## 779  assert       NA                           not_na min_delay  8461
+## 780  assert       NA                           not_na min_delay  8500
+## 781  assert       NA                           not_na min_delay  8555
+## 782  assert       NA                           not_na min_delay  8562
+## 783  assert       NA                           not_na min_delay  8586
+## 784  assert       NA                           not_na min_delay  8601
+## 785  assert       NA                           not_na min_delay  8678
+## 786  assert       NA                           not_na min_delay  8684
+## 787  assert       NA                           not_na min_delay  8700
+## 788  assert       NA                           not_na min_delay  8752
+## 789  assert       NA                           not_na min_delay  8788
+## 790  assert       NA                           not_na min_delay  8792
+## 791  assert       NA                           not_na min_delay  8798
+## 792  assert       NA                           not_na min_delay  8817
+## 793  assert       NA                           not_na min_delay  8837
+## 794  assert       NA                           not_na min_delay  8842
+## 795  assert       NA                           not_na min_delay  8844
+## 796  assert       NA                           not_na min_delay  8845
+## 797  assert       NA                           not_na min_delay  8849
+## 798  assert       NA                           not_na min_delay  8882
+## 799  assert       NA                           not_na min_delay  8885
+## 800  assert       NA                           not_na min_delay  8890
+## 801  assert       NA                           not_na min_delay  8891
+## 802  assert       NA                           not_na min_delay  8935
+## 803  assert       NA                           not_na min_delay  8943
+## 804  assert       NA                           not_na min_delay  8951
+## 805  assert       NA                           not_na min_delay  8956
+## 806  assert       NA                           not_na min_delay  8994
+## 807  assert       NA                           not_na min_delay  9006
+## 808  assert       NA                           not_na min_delay  9046
+## 809  assert       NA                           not_na min_delay  9099
+## 810  assert       NA                           not_na min_delay  9123
+## 811  assert       NA                           not_na min_delay  9124
+## 812  assert       NA                           not_na min_delay  9171
+## 813  assert       NA                           not_na min_delay  9261
+## 814  assert       NA                           not_na min_delay  9266
+## 815  assert       NA                           not_na min_delay  9289
+## 816  assert       NA                           not_na min_delay  9307
+## 817  assert       NA                           not_na min_delay  9325
+## 818  assert       NA                           not_na min_delay  9330
+## 819  assert       NA                           not_na min_delay  9353
+## 820  assert       NA                           not_na min_delay  9399
+## 821  assert       NA                           not_na min_delay  9412
+## 822  assert       NA                           not_na min_delay  9430
+## 823  assert       NA                           not_na min_delay  9444
+## 824  assert       NA                           not_na min_delay  9464
+## 825  assert       NA                           not_na min_delay  9467
+## 826  assert       NA                           not_na min_delay  9490
+## 827  assert       NA                           not_na min_delay  9521
+## 828  assert       NA                           not_na min_delay  9538
+## 829  assert       NA                           not_na min_delay  9559
+## 830  assert       NA                           not_na min_delay  9583
+## 831  assert       NA                           not_na min_delay  9594
+## 832  assert       NA                           not_na min_delay  9647
+## 833  assert       NA                           not_na min_delay  9665
+## 834  assert       NA                           not_na min_delay  9685
+## 835  assert       NA                           not_na min_delay  9698
+## 836  assert       NA                           not_na min_delay  9706
+## 837  assert       NA                           not_na min_delay  9707
+## 838  assert       NA                           not_na min_delay  9728
+## 839  assert       NA                           not_na min_delay  9789
+## 840  assert       NA                           not_na min_delay  9795
+## 841  assert       NA                           not_na min_delay  9796
+## 842  assert       NA                           not_na min_delay  9826
+## 843  assert       NA                           not_na min_delay  9851
+## 844  assert       NA                           not_na min_delay  9889
+## 845  assert       NA                           not_na min_delay  9894
+## 846  assert       NA                           not_na min_delay  9984
+## 847  assert       NA                           not_na min_delay 10006
+## 848  assert       NA                           not_na min_delay 10034
+## 849  assert       NA                           not_na min_delay 10091
+## 850  assert       NA                           not_na min_delay 10127
+## 851  assert       NA                           not_na min_delay 10146
+## 852  assert       NA                           not_na min_delay 10147
+## 853  assert       NA                           not_na min_delay 10169
+## 854  assert       NA                           not_na min_delay 10195
+## 855  assert       NA                           not_na min_delay 10205
+## 856  assert       NA                           not_na min_delay 10211
+## 857  assert       NA                           not_na min_delay 10220
+## 858  assert       NA                           not_na min_delay 10221
+## 859  assert       NA                           not_na min_delay 10234
+## 860  assert       NA                           not_na min_delay 10237
+## 861  assert       NA                           not_na min_delay 10240
+## 862  assert       NA                           not_na min_delay 10255
+## 863  assert       NA                           not_na min_delay 10277
+## 864  assert       NA                           not_na min_delay 10325
+## 865  assert       NA                           not_na min_delay 10353
+## 866  assert       NA                           not_na min_delay 10370
+## 867  assert       NA                           not_na min_delay 10373
+## 868  assert       NA                           not_na min_delay 10438
+## 869  assert       NA                           not_na min_delay 10447
+## 870  assert       NA                           not_na min_delay 10467
+## 871  assert       NA                           not_na min_delay 10480
+## 872  assert       NA                           not_na min_delay 10485
+## 873  assert       NA                           not_na min_delay 10489
+## 874  assert       NA                           not_na min_delay 10514
+## 875  assert       NA                           not_na min_delay 10540
+## 876  assert       NA                           not_na min_delay 10542
+## 877  assert       NA                           not_na min_delay 10549
+## 878  assert       NA                           not_na min_delay 10556
+## 879  assert       NA                           not_na min_delay 10590
+## 880  assert       NA                           not_na min_delay 10604
+## 881  assert       NA                           not_na min_delay 10606
+## 882  assert       NA                           not_na min_delay 10615
+## 883  assert       NA                           not_na min_delay 10626
+## 884  assert       NA                           not_na min_delay 10661
+## 885  assert       NA                           not_na min_delay 10683
+## 886  assert       NA                           not_na min_delay 10705
+## 887  assert       NA                           not_na min_delay 10707
+## 888  assert       NA                           not_na min_delay 10713
+## 889  assert       NA                           not_na min_delay 10737
+## 890  assert       NA                           not_na min_delay 10747
+## 891  assert       NA                           not_na min_delay 10757
+## 892  assert       NA                           not_na min_delay 10762
+## 893  assert       NA                           not_na min_delay 10764
+## 894  assert       NA                           not_na min_delay 10772
+## 895  assert       NA                           not_na min_delay 10803
+## 896  assert       NA                           not_na min_delay 10812
+## 897  assert       NA                           not_na min_delay 10853
+## 898  assert       NA                           not_na min_delay 10861
+## 899  assert       NA                           not_na min_delay 10894
+## 900  assert       NA                           not_na min_delay 10904
+## 901  assert       NA                           not_na min_delay 10925
+## 902  assert       NA                           not_na min_delay 10946
+## 903  assert       NA                           not_na min_delay 10952
+## 904  assert       NA                           not_na min_delay 10966
+## 905  assert       NA                           not_na min_delay 10969
+## 906  assert       NA                           not_na min_delay 10976
+## 907  assert       NA                           not_na min_delay 11003
+## 908  assert       NA                           not_na min_delay 11014
+## 909  assert       NA                           not_na min_delay 11015
+## 910  assert       NA                           not_na min_delay 11062
+## 911  assert       NA                           not_na min_delay 11107
+## 912  assert       NA                           not_na min_delay 11134
+## 913  assert       NA                           not_na min_delay 11141
+## 914  assert       NA                           not_na min_delay 11183
+## 915  assert       NA                           not_na min_delay 11267
+## 916  assert       NA                           not_na min_delay 11282
+## 917  assert       NA                           not_na min_delay 11283
+## 918  assert       NA                           not_na min_delay 11346
+## 919  assert       NA                           not_na min_delay 11403
+## 920  assert       NA                           not_na min_delay 11416
+## 921  assert       NA                           not_na min_delay 11477
+## 922  assert       NA                           not_na min_delay 11508
+## 923  assert       NA                           not_na min_delay 11517
+## 924  assert       NA                           not_na min_delay 11534
+## 925  assert       NA                           not_na min_delay 11542
+## 926  assert       NA                           not_na min_delay 11557
+## 927  assert       NA                           not_na min_delay 11577
+## 928  assert       NA                           not_na min_delay 11583
+## 929  assert       NA                           not_na min_delay 11594
+## 930  assert       NA                           not_na min_delay 11624
+## 931  assert       NA                           not_na min_delay 11639
+## 932  assert       NA                           not_na min_delay 11664
+## 933  assert       NA                           not_na min_delay 11690
+## 934  assert       NA                           not_na min_delay 11717
+## 935  assert       NA                           not_na min_delay 11724
+## 936  assert       NA                           not_na min_delay 11729
+## 937  assert       NA                           not_na min_delay 11798
+## 938  assert       NA                           not_na min_delay 11814
+## 939  assert       NA                           not_na min_delay 11926
+## 940  assert       NA                           not_na min_delay 11939
+## 941  assert       NA                           not_na min_delay 11960
+## 942  assert       NA                           not_na min_delay 12017
+## 943  assert       NA                           not_na min_delay 12035
+## 944  assert       NA                           not_na min_delay 12038
+## 945  assert       NA                           not_na min_delay 12040
+## 946  assert       NA                           not_na min_delay 12087
+## 947  assert       NA                           not_na min_delay 12116
+## 948  assert       NA                           not_na min_delay 12122
+## 949  assert       NA                           not_na min_delay 12123
+## 950  assert       NA                           not_na min_delay 12127
+## 951  assert       NA                           not_na min_delay 12129
+## 952  assert       NA                           not_na min_delay 12149
+## 953  assert       NA                           not_na min_delay 12163
+## 954  assert       NA                           not_na min_delay 12172
+## 955  assert       NA                           not_na min_delay 12197
+## 956  assert       NA                           not_na min_delay 12234
+## 957  assert       NA                           not_na min_delay 12240
+## 958  assert       NA                           not_na min_delay 12241
+## 959  assert       NA                           not_na min_delay 12256
+## 960  assert       NA                           not_na min_delay 12257
+## 961  assert       NA                           not_na min_delay 12266
+## 962  assert       NA                           not_na min_delay 12279
+## 963  assert       NA                           not_na min_delay 12321
+## 964  assert       NA                           not_na min_delay 12327
+## 965  assert       NA                           not_na min_delay 12376
+## 966  assert       NA                           not_na min_delay 12386
+## 967  assert       NA                           not_na min_delay 12405
+## 968  assert       NA                           not_na min_delay 12406
+## 969  assert       NA                           not_na min_delay 12408
+## 970  assert       NA                           not_na min_delay 12439
+## 971  assert       NA                           not_na min_delay 12448
+## 972  assert       NA                           not_na min_delay 12511
+## 973  assert       NA                           not_na min_delay 12571
+## 974  assert       NA                           not_na min_delay 12577
+## 975  assert       NA                           not_na min_delay 12582
+## 976  assert       NA                           not_na min_delay 12630
+## 977  assert       NA                           not_na min_delay 12639
+## 978  assert       NA                           not_na min_delay 12640
+## 979  assert       NA                           not_na min_delay 12650
+## 980  assert       NA                           not_na min_delay 12660
+## 981  assert       NA                           not_na min_delay 12668
+## 982  assert       NA                           not_na min_delay 12687
+## 983  assert       NA                           not_na min_delay 12737
+## 984  assert       NA                           not_na min_delay 12756
+## 985  assert       NA                           not_na min_delay 12766
+## 986  assert       NA                           not_na min_delay 12769
+## 987  assert       NA                           not_na min_delay 12777
+## 988  assert       NA                           not_na min_delay 12780
+## 989  assert       NA                           not_na min_delay 12787
+## 990  assert       NA                           not_na min_delay 12788
+## 991  assert       NA                           not_na min_delay 12797
+## 992  assert       NA                           not_na min_delay 12812
+## 993  assert       NA                           not_na min_delay 12835
+## 994  assert       NA                           not_na min_delay 12843
+## 995  assert       NA                           not_na min_delay 12856
+## 996  assert       NA                           not_na min_delay 12859
+## 997  assert       NA                           not_na min_delay 12898
+## 998  assert       NA                           not_na min_delay 12907
+## 999  assert       NA                           not_na min_delay 12929
+## 1000 assert       NA                           not_na min_delay 12941
+## 1001 assert       NA                           not_na min_delay 12944
+## 1002 assert       NA                           not_na min_delay 12957
+## 1003 assert       NA                           not_na min_delay 12972
+## 1004 assert       NA                           not_na min_delay 12973
+## 1005 assert       NA                           not_na min_delay 12979
+## 1006 assert       NA                           not_na min_delay 13025
+## 1007 assert       NA                           not_na min_delay 13045
+## 1008 assert       NA                           not_na min_delay 13090
+## 1009 assert       NA                           not_na min_delay 13120
+## 1010 assert       NA                           not_na min_delay 13144
+## 1011 assert       NA                           not_na min_delay 13151
+## 1012 assert       NA                           not_na min_delay 13178
+## 1013 assert       NA                           not_na min_delay 13187
+## 1014 assert       NA                           not_na min_delay 13206
+## 1015 assert       NA                           not_na min_delay 13283
+## 1016 assert       NA                           not_na min_delay 13345
+## 1017 assert       NA                           not_na min_delay 13350
+## 1018 assert       NA                           not_na min_delay 13352
+## 1019 assert       NA                           not_na min_delay 13369
+## 1020 assert       NA                           not_na min_delay 13370
+## 1021 assert       NA                           not_na min_delay 13452
+## 1022 assert       NA                           not_na min_delay 13531
+## 1023 assert       NA                           not_na min_delay 13538
+## 1024 assert       NA                           not_na min_delay 13591
+## 1025 assert       NA                           not_na min_delay 13606
+## 1026 assert       NA                           not_na min_delay 13621
+## 1027 assert       NA                           not_na min_delay 13626
+## 1028 assert       NA                           not_na min_delay 13638
+## 1029 assert       NA                           not_na min_delay 13648
+## 1030 assert       NA                           not_na min_delay 13652
+## 1031 assert       NA                           not_na min_delay 13663
+## 1032 assert       NA                           not_na min_delay 13670
+## 1033 assert       NA                           not_na min_delay 13671
+## 1034 assert       NA                           not_na min_delay 13673
+## 1035 assert       NA                           not_na min_delay 13700
+## 1036 assert       NA                           not_na min_delay 13713
+## 1037 assert       NA                           not_na min_delay 13729
+## 1038 assert       NA                           not_na min_delay 13737
+## 1039 assert       NA                           not_na min_delay 13760
+## 1040 assert       NA                           not_na min_delay 13762
+## 1041 assert       NA                           not_na min_delay 13769
+## 1042 assert       NA                           not_na min_delay 13772
+## 1043 assert       NA                           not_na min_delay 13785
+## 1044 assert       NA                           not_na min_delay 13801
+## 1045 assert       NA                           not_na min_delay 13834
+## 1046 assert       NA                           not_na min_delay 13845
+## 1047 assert       NA                           not_na min_delay 13848
+## 1048 assert       NA                           not_na min_delay 13854
+## 1049 assert       NA                           not_na min_delay 13857
+## 1050 assert       NA                           not_na min_delay 13858
+## 1051 assert       NA                           not_na min_delay 13869
+## 1052 assert       NA                           not_na min_delay 13870
+## 1053 assert       NA                           not_na min_delay 13951
+## 1054 assert       NA                           not_na min_delay 13959
+## 1055 assert       NA                           not_na min_delay 13994
+## 1056 assert       NA                           not_na min_delay 14032
+## 1057 assert       NA                           not_na min_delay 14039
+## 1058 assert       NA                           not_na min_delay 14057
+## 1059 assert       NA                           not_na min_delay 14068
+## 1060 assert       NA                           not_na min_delay 14081
+## 1061 assert       NA                           not_na min_delay 14082
+## 1062 assert       NA                           not_na min_delay 14084
+## 1063 assert       NA                           not_na min_delay 14094
+## 1064 assert       NA                           not_na min_delay 14116
+## 1065 assert       NA                           not_na min_delay 14121
+## 1066 assert       NA                           not_na min_delay 14144
+## 1067 assert       NA                           not_na min_delay 14161
+## 1068 assert       NA                           not_na min_delay 14175
+## 1069 assert       NA                           not_na min_delay 14226
+## 1070 assert       NA                           not_na min_delay 14258
+## 1071 assert       NA                           not_na min_delay 14275
+## 1072 assert       NA                           not_na min_delay 14283
+## 1073 assert       NA                           not_na min_delay 14284
+## 1074 assert       NA                           not_na min_delay 14302
+## 1075 assert       NA                           not_na min_delay 14334
+## 1076 assert       NA                           not_na min_delay 14366
+## 1077 assert       NA                           not_na min_delay 14384
+## 1078 assert       NA                           not_na min_delay 14385
+## 1079 assert       NA                           not_na min_delay 14424
+## 1080 assert       NA                           not_na min_delay 14467
+## 1081 assert       NA                           not_na min_delay 14472
+## 1082 assert       NA                           not_na min_delay 14473
+## 1083 assert       NA                           not_na min_delay 14479
+## 1084 assert       NA                           not_na min_delay 14481
+## 1085 assert       NA                           not_na min_delay 14486
+## 1086 assert       NA                           not_na min_delay 14498
+## 1087 assert       NA                           not_na min_delay 14546
+## 1088 assert       NA                           not_na min_delay 14548
+## 1089 assert       NA                           not_na min_delay 14564
+## 1090 assert       NA                           not_na min_delay 14572
+## 1091 assert       NA                           not_na min_delay 14613
+## 1092 assert       NA                           not_na min_delay 14618
+## 1093 assert       NA                           not_na min_delay 14622
+## 1094 assert       NA                           not_na min_delay 14634
+## 1095 assert       NA                           not_na min_delay 14652
+## 1096 assert       NA                           not_na min_delay 14653
+## 1097 assert       NA                           not_na min_delay 14654
+## 1098 assert       NA                           not_na min_delay 14697
+## 1099 assert       NA                           not_na min_delay 14719
+## 1100 assert       NA                           not_na min_delay 14742
+## 1101 assert       NA                           not_na min_delay 14755
+## 1102 assert       NA                           not_na min_delay 14826
+## 1103 assert       NA                           not_na min_delay 14834
+## 1104 assert       NA                           not_na min_delay 14851
+## 1105 assert       NA                           not_na min_delay 14863
+## 1106 assert       NA                           not_na min_delay 14885
+## 1107 assert       NA                           not_na min_delay 14889
+## 1108 assert       NA                           not_na min_delay 14891
+## 1109 assert       NA                           not_na min_delay 14936
+## 1110 assert       NA                           not_na min_delay 14945
+## 1111 assert       NA                           not_na min_delay 14948
+## 1112 assert       NA                           not_na min_delay 14956
+## 1113 assert       NA                           not_na min_delay 14987
+## 1114 assert       NA                           not_na min_delay 15030
+## 1115 assert       NA                           not_na min_delay 15050
+## 1116 assert       NA                           not_na min_delay 15071
+## 1117 assert       NA                           not_na min_delay 15074
+## 1118 assert       NA                           not_na min_delay 15083
+## 1119 assert       NA                           not_na min_delay 15091
+## 1120 assert       NA                           not_na min_delay 15116
+## 1121 assert       NA                           not_na min_delay 15124
+## 1122 assert       NA                           not_na min_delay 15135
+## 1123 assert       NA                           not_na min_delay 15149
+## 1124 assert       NA                           not_na min_delay 15155
+## 1125 assert       NA                           not_na min_delay 15183
+## 1126 assert       NA                           not_na min_delay 15193
+## 1127 assert       NA                           not_na min_delay 15199
+## 1128 assert       NA                           not_na min_delay 15239
+## 1129 assert       NA                           not_na min_delay 15246
+## 1130 assert       NA                           not_na min_delay 15264
+## 1131 assert       NA                           not_na min_delay 15298
+## 1132 assert       NA                           not_na min_delay 15309
+## 1133 assert       NA                           not_na min_delay 15328
+## 1134 assert       NA                           not_na min_delay 15342
+## 1135 assert       NA                           not_na min_delay 15361
+## 1136 assert       NA                           not_na min_delay 15392
+## 1137 assert       NA                           not_na min_delay 15406
+## 1138 assert       NA                           not_na min_delay 15427
+## 1139 assert       NA                           not_na min_delay 15436
+## 1140 assert       NA                           not_na min_delay 15477
+## 1141 assert       NA                           not_na min_delay 15492
+## 1142 assert       NA                           not_na min_delay 15504
+## 1143 assert       NA                           not_na min_delay 15566
+## 1144 assert       NA                           not_na min_delay 15576
+## 1145 assert       NA                           not_na min_delay 15618
+## 1146 assert       NA                           not_na min_delay 15624
+## 1147 assert       NA                           not_na min_delay 15646
+## 1148 assert       NA                           not_na min_delay 15649
+## 1149 assert       NA                           not_na min_delay 15655
+## 1150 assert       NA                           not_na min_delay 15668
+## 1151 assert       NA                           not_na min_delay 15669
+## 1152 assert       NA                           not_na min_delay 15689
+## 1153 assert       NA                           not_na min_delay 15713
+## 1154 assert       NA                           not_na min_delay 15717
+## 1155 assert       NA                           not_na min_delay 15722
+## 1156 assert       NA                           not_na min_delay 15739
+## 1157 assert       NA                           not_na min_delay 15770
+## 1158 assert       NA                           not_na min_delay 15777
+## 1159 assert       NA                           not_na min_delay 15785
+## 1160 assert       NA                           not_na min_delay 15795
+## 1161 assert       NA                           not_na min_delay 15865
+## 1162 assert       NA                           not_na min_delay 15874
+## 1163 assert       NA                           not_na min_delay 15877
+## 1164 assert       NA                           not_na min_delay 15902
+## 1165 assert       NA                           not_na min_delay 15955
+## 1166 assert       NA                           not_na min_delay 15961
+## 1167 assert       NA                           not_na min_delay 15965
+## 1168 assert       NA                           not_na min_delay 15977
+## 1169 assert       NA                           not_na min_delay 16000
+## 1170 assert       NA                           not_na min_delay 16026
+## 1171 assert       NA                           not_na min_delay 16036
+## 1172 assert       NA                           not_na min_delay 16074
+## 1173 assert       NA                           not_na min_delay 16077
+## 1174 assert       NA                           not_na min_delay 16143
+## 1175 assert       NA                           not_na min_delay 16151
+## 1176 assert       NA                           not_na min_delay 16158
+## 1177 assert       NA                           not_na min_delay 16164
+## 1178 assert       NA                           not_na min_delay 16188
+## 1179 assert       NA                           not_na min_delay 16189
+## 1180 assert       NA                           not_na min_delay 16198
+## 1181 assert       NA                           not_na min_delay 16203
+## 1182 assert       NA                           not_na min_delay 16213
+## 1183 assert       NA                           not_na min_delay 16219
+## 1184 assert       NA                           not_na min_delay 16245
+## 1185 assert       NA                           not_na min_delay 16261
+## 1186 assert       NA                           not_na min_delay 16288
+## 1187 assert       NA                           not_na min_delay 16311
+## 1188 assert       NA                           not_na min_delay 16327
+## 1189 assert       NA                           not_na min_delay 16349
+## 1190 assert       NA                           not_na min_delay 16358
+## 1191 assert       NA                           not_na min_delay 16366
+## 1192 assert       NA                           not_na min_delay 16377
+## 1193 assert       NA                           not_na min_delay 16383
+## 1194 assert       NA                           not_na min_delay 16390
+## 1195 assert       NA                           not_na min_delay 16393
+## 1196 assert       NA                           not_na min_delay 16399
+## 1197 assert       NA                           not_na min_delay 16419
+## 1198 assert       NA                           not_na min_delay 16420
+## 1199 assert       NA                           not_na min_delay 16473
+## 1200 assert       NA                           not_na min_delay 16487
+## 1201 assert       NA                           not_na min_delay 16493
+## 1202 assert       NA                           not_na min_delay 16508
+## 1203 assert       NA                           not_na min_delay 16510
+## 1204 assert       NA                           not_na min_delay 16517
+## 1205 assert       NA                           not_na min_delay 16563
+## 1206 assert       NA                           not_na min_delay 16591
+## 1207 assert       NA                           not_na min_delay 16615
+## 1208 assert       NA                           not_na min_delay 16628
+## 1209 assert       NA                           not_na min_delay 16633
+## 1210 assert       NA                           not_na min_delay 16637
+## 1211 assert       NA                           not_na min_delay 16650
+## 1212 assert       NA                           not_na min_delay 16655
+## 1213 assert       NA                           not_na min_delay 16679
+## 1214 assert       NA                           not_na min_delay 16684
+## 1215 assert       NA                           not_na min_delay 16707
+## 1216 assert       NA                           not_na min_delay 16744
+## 1217 assert       NA                           not_na min_delay 16746
+## 1218 assert       NA                           not_na min_delay 16749
+## 1219 assert       NA                           not_na min_delay 16776
+## 1220 assert       NA                           not_na min_delay 16800
+## 1221 assert       NA                           not_na min_delay 16820
+## 1222 assert       NA                           not_na min_delay 16823
+## 1223 assert       NA                           not_na min_delay 16826
+## 1224 assert       NA                           not_na min_delay 16906
+## 1225 assert       NA                           not_na min_delay 16998
+## 1226 assert       NA                           not_na min_delay 17002
+## 1227 assert       NA                           not_na min_delay 17006
+## 1228 assert       NA                           not_na min_delay 17025
+## 1229 assert       NA                           not_na min_delay 17029
+## 1230 assert       NA                           not_na min_delay 17043
+## 1231 assert       NA                           not_na min_delay 17049
+## 1232 assert       NA                           not_na min_delay 17052
+## 1233 assert       NA                           not_na min_delay 17086
+## 1234 assert       NA                           not_na min_delay 17110
+## 1235 assert       NA                           not_na min_delay 17112
+## 1236 assert       NA                           not_na min_delay 17116
+## 1237 assert       NA                           not_na min_delay 17122
+## 1238 assert       NA                           not_na min_delay 17134
+## 1239 assert       NA                           not_na min_delay 17138
+## 1240 assert       NA                           not_na min_delay 17159
+## 1241 assert       NA                           not_na min_delay 17165
+## 1242 assert       NA                           not_na min_delay 17176
+## 1243 assert       NA                           not_na min_delay 17192
+## 1244 assert       NA                           not_na min_delay 17229
+## 1245 assert       NA                           not_na min_delay 17319
+## 1246 assert       NA                           not_na min_delay 17325
+## 1247 assert       NA                           not_na min_delay 17349
+## 1248 assert       NA                           not_na min_delay 17377
+## 1249 assert       NA                           not_na min_delay 17382
+## 1250 assert       NA                           not_na min_delay 17383
+## 1251 assert       NA                           not_na min_delay 17405
+## 1252 assert       NA                           not_na min_delay 17417
+## 1253 assert       NA                           not_na min_delay 17438
+## 1254 assert       NA                           not_na min_delay 17456
+## 1255 assert       NA                           not_na min_delay 17505
+## 1256 assert       NA                           not_na min_delay 17519
+## 1257 assert       NA                           not_na min_delay 17538
+## 1258 assert       NA                           not_na min_delay 17540
+## 1259 assert       NA                           not_na min_delay 17558
+## 1260 assert       NA                           not_na min_delay 17559
+## 1261 assert       NA                           not_na min_delay 17586
+## 1262 assert       NA                           not_na min_delay 17620
+## 1263 assert       NA                           not_na min_delay 17631
+## 1264 assert       NA                           not_na min_delay 17638
+## 1265 assert       NA                           not_na min_delay 17649
+## 1266 assert       NA                           not_na min_delay 17705
+## 1267 assert       NA                           not_na min_delay 17714
+## 1268 assert       NA                           not_na min_delay 17734
+## 1269 assert       NA                           not_na min_delay 17738
+## 1270 assert       NA                           not_na min_delay 17739
+## 1271 assert       NA                           not_na min_delay 17779
+## 1272 assert       NA                           not_na min_delay 17787
+## 1273 assert       NA                           not_na min_delay 17811
+## 1274 assert       NA                           not_na min_delay 17829
+## 1275 assert       NA                           not_na min_delay 17878
+## 1276 assert       NA                           not_na min_delay 17950
+## 1277 assert       NA                           not_na min_delay 17968
+## 1278 assert       NA                           not_na min_delay 17979
+## 1279 assert       NA                           not_na min_delay 17983
+## 1280 assert       NA                           not_na min_delay 18020
+## 1281 assert       NA                           not_na min_delay 18022
+## 1282 assert       NA                           not_na min_delay 18030
+## 1283 assert       NA                           not_na min_delay 18065
+## 1284 assert       NA                           not_na min_delay 18092
+## 1285 assert       NA                           not_na min_delay 18142
+## 1286 assert       NA                           not_na min_delay 18159
+## 1287 assert       NA                           not_na min_delay 18178
+## 1288 assert       NA                           not_na min_delay 18203
+## 1289 assert       NA                           not_na min_delay 18212
+## 1290 assert       NA                           not_na min_delay 18234
+## 1291 assert       NA                           not_na min_delay 18243
+## 1292 assert       NA                           not_na min_delay 18260
+## 1293 assert       NA                           not_na min_delay 18324
+## 1294 assert       NA                           not_na min_delay 18329
+## 1295 assert       NA                           not_na min_delay 18352
+## 1296 assert       NA                           not_na min_delay 18371
+## 1297 assert       NA                           not_na min_delay 18386
+## 1298 assert       NA                           not_na min_delay 18409
+## 1299 assert       NA                           not_na min_delay 18413
+## 1300 assert       NA                           not_na min_delay 18425
+## 1301 assert       NA                           not_na min_delay 18489
+## 1302 assert       NA                           not_na min_delay 18525
+## 1303 assert       NA                           not_na min_delay 18579
+## 1304 assert       NA                           not_na min_delay 18584
+## 1305 assert       NA                           not_na min_delay 18591
+## 1306 assert       NA                           not_na min_delay 18619
+## 1307 assert       NA                           not_na min_delay 18646
+## 1308 assert       NA                           not_na min_delay 18676
+## 1309 assert       NA                           not_na min_delay 18715
+## 1310 assert       NA                           not_na min_delay 18734
+## 1311 assert       NA                           not_na min_delay 18742
+## 1312 assert       NA                           not_na min_delay 18747
+## 1313 assert       NA                           not_na min_delay 18794
+## 1314 assert       NA                           not_na min_delay 18803
+## 1315 assert       NA                           not_na min_delay 18812
+## 1316 assert       NA                           not_na min_delay 18817
+## 1317 assert       NA                           not_na min_delay 18846
+## 1318 assert       NA                           not_na min_delay 18865
+## 1319 assert       NA                           not_na min_delay 18877
+## 1320 assert       NA                           not_na min_delay 18885
+## 1321 assert       NA                           not_na min_delay 18900
+## 1322 assert       NA                           not_na min_delay 18926
+## 1323 assert       NA                           not_na min_delay 18933
+## 1324 assert       NA                           not_na min_delay 18972
+## 1325 assert       NA                           not_na min_delay 18977
+## 1326 assert       NA                           not_na min_delay 19012
+## 1327 assert       NA                           not_na min_delay 19049
+## 1328 assert       NA                           not_na min_delay 19105
+## 1329 assert       NA                           not_na min_delay 19158
+## 1330 assert       NA                           not_na min_delay 19164
+## 1331 assert       NA                           not_na min_delay 19188
+## 1332 assert       NA                           not_na min_delay 19201
+## 1333 assert       NA                           not_na min_delay 19241
+## 1334 assert       NA                           not_na min_delay 19243
+## 1335 assert       NA                           not_na min_delay 19270
+## 1336 assert       NA                           not_na min_delay 19282
+## 1337 assert       NA                           not_na min_delay 19293
+## 1338 assert       NA                           not_na min_delay 19332
+## 1339 assert       NA                           not_na min_delay 19357
+## 1340 assert       NA                           not_na min_delay 19423
+## 1341 assert       NA                           not_na min_delay 19446
+## 1342 assert       NA                           not_na min_delay 19457
+## 1343 assert       NA                           not_na min_delay 19458
+## 1344 assert       NA                           not_na min_delay 19512
+## 1345 assert       NA                           not_na min_delay 19545
+## 1346 assert       NA                           not_na min_delay 19549
+## 1347 assert       NA                           not_na min_delay 19559
+## 1348 assert       NA                           not_na min_delay 19607
+## 1349 assert       NA                           not_na min_delay 19609
+## 1350 assert       NA                           not_na min_delay 19614
+## 1351 assert       NA                           not_na min_delay 19616
+## 1352 assert       NA                           not_na min_delay 19620
+## 1353 assert       NA                           not_na min_delay 19642
+## 1354 assert       NA                           not_na min_delay 19647
+## 1355 assert       NA                           not_na min_delay 19676
+## 1356 assert       NA                           not_na min_delay 19678
+## 1357 assert       NA                           not_na min_delay 19712
+## 1358 assert       NA                           not_na min_delay 19715
+## 1359 assert       NA                           not_na min_delay 19719
+## 1360 assert       NA                           not_na min_delay 19739
+## 1361 assert       NA                           not_na min_delay 19748
+## 1362 assert       NA                           not_na min_delay 19800
+## 1363 assert       NA                           not_na min_delay 19810
+## 1364 assert       NA                           not_na min_delay 19852
+## 1365 assert       NA                           not_na min_delay 19863
+## 1366 assert       NA                           not_na min_delay 19865
+## 1367 assert       NA                           not_na min_delay 19915
+## 1368 assert       NA                           not_na min_delay 19929
+## 1369 assert       NA                           not_na min_delay 19943
+## 1370 assert       NA                           not_na min_delay 19950
+## 1371 assert       NA                           not_na min_delay 19987
+## 1372 assert       NA                           not_na min_delay 19997
+## 1373 assert       NA                           not_na min_delay 20043
+## 1374 assert       NA                           not_na min_delay 20089
+## 1375 assert       NA                           not_na min_delay 20103
+## 1376 assert       NA                           not_na min_delay 20169
+## 1377 assert       NA                           not_na min_delay 20179
+## 1378 assert       NA                           not_na min_delay 20183
+## 1379 assert       NA                           not_na min_delay 20198
+## 1380 assert       NA                           not_na min_delay 20200
+## 1381 assert       NA                           not_na min_delay 20213
+## 1382 assert       NA                           not_na min_delay 20224
+## 1383 assert       NA                           not_na min_delay 20251
+## 1384 assert       NA                           not_na min_delay 20253
+## 1385 assert       NA                           not_na min_delay 20264
+## 1386 assert       NA                           not_na min_delay 20290
+## 1387 assert       NA                           not_na min_delay 20330
+## 1388 assert       NA                           not_na min_delay 20359
+## 1389 assert       NA                           not_na min_delay 20365
+## 1390 assert       NA                           not_na min_delay 20371
+## 1391 assert       NA                           not_na min_delay 20384
+## 1392 assert       NA                           not_na min_delay 20386
+## 1393 assert       NA                           not_na min_delay 20387
+## 1394 assert       NA                           not_na min_delay 20390
+## 1395 assert       NA                           not_na min_delay 20405
+## 1396 assert       NA                           not_na min_delay 20433
+## 1397 assert       NA                           not_na min_delay 20436
+## 1398 assert       NA                           not_na min_delay 20487
+## 1399 assert       NA                           not_na min_delay 20489
+## 1400 assert       NA                           not_na min_delay 20508
+## 1401 assert       NA                           not_na min_delay 20509
+## 1402 assert       NA                           not_na min_delay 20514
+## 1403 assert       NA                           not_na min_delay 20530
+## 1404 assert       NA                           not_na min_delay 20604
+## 1405 assert       NA                           not_na min_delay 20615
+## 1406 assert       NA                           not_na min_delay 20629
+## 1407 assert       NA                           not_na min_delay 20632
+## 1408 assert       NA                           not_na min_delay 20644
+## 1409 assert       NA                           not_na min_delay 20655
+## 1410 assert       NA                           not_na min_delay 20672
+## 1411 assert       NA                           not_na min_delay 20689
+## 1412 assert       NA                           not_na min_delay 20691
+## 1413 assert       NA                           not_na min_delay 20703
+## 1414 assert       NA                           not_na min_delay 20706
+## 1415 assert       NA                           not_na min_delay 20707
+## 1416 assert       NA                           not_na min_delay 20719
+##            value
+## 1          YU/BD
+## 2          YU/BD
+## 3          YU/BD
+## 4          YU/BD
+## 5          YU/BD
+## 6          YU/BD
+## 7          YU/BD
+## 8          YU/BD
+## 9          YU/BD
+## 10           999
+## 11         YU/BD
+## 12         YU/BD
+## 13         YU/BD
+## 14         YU/BD
+## 15         YU/BD
+## 16         YU/BD
+## 17         YU/BD
+## 18         YU/BD
+## 19         YU/BD
+## 20         YU/BD
+## 21         YU/BD
+## 22         YU/BD
+## 23         YU/BD
+## 24         YU/BD
+## 25         YU/BD
+## 26         YU/BD
+## 27         YU/BD
+## 28         YU/BD
+## 29         YU/BD
+## 30         YU/BD
+## 31         YU/BD
+## 32         YU/BD
+## 33         YU/BD
+## 34         YU/BD
+## 35         YU/BD
+## 36         YU/BD
+## 37         YU/BD
+## 38         YU/BD
+## 39        YU/ BD
+## 40         YU/BD
+## 41         YU/BD
+## 42         YU/BD
+## 43           999
+## 44         YU/BD
+## 45         YU/BD
+## 46         BD/YU
+## 47         YU/BD
+## 48         YU/BD
+## 49         YU/BD
+## 50         YU/BD
+## 51         YU/BD
+## 52         YU/BD
+## 53         YU/BD
+## 54         YU/BD
+## 55         YU/BD
+## 56         YU/BD
+## 57         YU/BD
+## 58         YU/BD
+## 59         YU/BD
+## 60         YU/BD
+## 61         YU/BD
+## 62         YU/BD
+## 63         YU/BD
+## 64         YU/BD
+## 65         YU/BD
+## 66         YU/BD
+## 67         YU/BD
+## 68         YU/BD
+## 69         YU/BD
+## 70         YU/BD
+## 71         YU/BD
+## 72         YU/BD
+## 73         YU/BD
+## 74         YU/BD
+## 75         YU/BD
+## 76         YU/BD
+## 77         YU/BD
+## 78         YU/BD
+## 79         YU/BD
+## 80         YU/BD
+## 81         YU/BD
+## 82         YU/BD
+## 83         YU/BD
+## 84         YU-BD
+## 85         YU/BD
+## 86         YU/BD
+## 87         YU/BD
+## 88         YU/BD
+## 89         YU/BD
+## 90         YU/BD
+## 91         YU/BD
+## 92         YU/BD
+## 93         YU/BD
+## 94    16 MCCOWAN
+## 95         YU/BD
+## 96         YU/BD
+## 97         YU/BD
+## 98         YU/BD
+## 99         YU/BD
+## 100        YU/BD
+## 101        YU/BD
+## 102        YU/BD
+## 103        YU/BD
+## 104        YU/BD
+## 105        YU/BD
+## 106        YU/BD
+## 107        YU/BD
+## 108        YU/BD
+## 109        YU/BD
+## 110        YU/BD
+## 111        YU/BD
+## 112        YU/BD
+## 113        YU/BD
+## 114        YU/BD
+## 115        YU/BD
+## 116        YU/BD
+## 117        YU/BD
+## 118        YU/BD
+## 119        YU/BD
+## 120        YU/BD
+## 121        YU/BD
+## 122          999
+## 123        YU/BD
+## 124        YU/BD
+## 125        YU/BD
+## 126        YU/BD
+## 127        YU/BD
+## 128        YU/BD
+## 129        YU/BD
+## 130        YU/BD
+## 131        YU/BD
+## 132        YU/BD
+## 133        YU/BD
+## 134        YU/BD
+## 135        YU/BD
+## 136        YU/BD
+## 137        YU/BD
+## 138        YU/BD
+## 139        YU/BD
+## 140        YU/BD
+## 141        YU/BD
+## 142        YU/BD
+## 143        YU/BD
+## 144        YU/BD
+## 145        YU/BD
+## 146        YU/BD
+## 147        YU/BD
+## 148        YU/BD
+## 149        YU/BD
+## 150        YU/BD
+## 151        YU/BD
+## 152        YU/BD
+## 153        YU/BD
+## 154        YU/BD
+## 155        YU/BD
+## 156        YU/BD
+## 157        YU/BD
+## 158        YU/BD
+## 159        YU/BD
+## 160        YU/BD
+## 161        YU/BD
+## 162        YU/BD
+## 163        YU/BD
+## 164        YU/BD
+## 165        YU/BD
+## 166        YU/BD
+## 167        YU/BD
+## 168        YU/BD
+## 169        YU/BD
+## 170        YU/BD
+## 171        YU/BD
+## 172        YU/BD
+## 173        YU/BD
+## 174        YU/BD
+## 175        YU/BD
+## 176        YU/BD
+## 177        YU/BD
+## 178        YU/BD
+## 179        YU/BD
+## 180        YU/BD
+## 181        YU/BD
+## 182        YU/BD
+## 183        YU/BD
+## 184        YU/BD
+## 185        YU/BD
+## 186        YU/BD
+## 187        YU/BD
+## 188        YU/BD
+## 189        YU/BD
+## 190        YU/BD
+## 191        YU/BD
+## 192        YU/BD
+## 193        YU/BD
+## 194        YU/BD
+## 195        YU/BD
+## 196        YU/BD
+## 197        YU/BD
+## 198        YU/BD
+## 199        YU/BD
+## 200        YU/BD
+## 201        YU/BD
+## 202        YU/BD
+## 203        YU/BD
+## 204        YU/BD
+## 205        YU/BD
+## 206        YU/BD
+## 207        YU/BD
+## 208        YU/BD
+## 209        YU/BD
+## 210        YU/BD
+## 211        YU/BD
+## 212        YU/BD
+## 213        YU/BD
+## 214        YU/BD
+## 215  704 RAD BUS
+## 216        YU/BD
+## 217        YU/BD
+## 218        YU/BD
+## 219        YU/BD
+## 220        YU/BD
+## 221        YU/BD
+## 222        YU/BD
+## 223        YU/BD
+## 224        YU/BD
+## 225        YU/BD
+## 226        YU/BD
+## 227        YU/BD
+## 228        YU/BD
+## 229        YU/BD
+## 230        YU/BD
+## 231        YU/BD
+## 232        YU/BD
+## 233        YU/BD
+## 234        YU/BD
+## 235       YU/ BD
+## 236        YU/BD
+## 237        YU/BD
+## 238        YU/BD
+## 239        YU/BD
+## 240       YU/ BD
+## 241       YU/ BD
+## 242        YU/BD
+## 243        YU/BD
+## 244        YU/BD
+## 245        YU/BD
+## 246        YU/BD
+## 247        YU/BD
+## 248        YU/BD
+## 249        YU/BD
+## 250        YU/BD
+## 251        YU/BD
+## 252        YU/BD
+## 253        YU/BD
+## 254        YU/BD
+## 255        YU/BD
+## 256        YU/BD
+## 257        YU/BD
+## 258        YU/BD
+## 259        YU/BD
+## 260        YU/BD
+## 261        YU/BD
+## 262        YU/BD
+## 263        YU/BD
+## 264      YU / BD
+## 265        YU/BD
+## 266        YU/BD
+## 267       YU/ BD
+## 268        YU/BD
+## 269        YU/BD
+## 270        YU/BD
+## 271        YU/BD
+## 272        YU-BD
+## 273        YU/BD
+## 274        YU/BD
+## 275        YU/BD
+## 276        YU/BD
+## 277        YU/BD
+## 278        YU/BD
+## 279        YU/BD
+## 280       YU/ BD
+## 281      YU / BD
+## 282       YU/ BD
+## 283      YU / BD
+## 284        YU/BD
+## 285        YU/BD
+## 286        YU/BD
+## 287        YU/BD
+## 288        YU/BD
+## 289        YU/BD
+## 290        YU/BD
+## 291       YU/ BD
+## 292        YU/BD
+## 293        YU/BD
+## 294        YU/BD
+## 295        YU/BD
+## 296        YU/BD
+## 297        YU/BD
+## 298       YU/ BD
+## 299      YU / BD
+## 300        YU/BD
+## 301        YU/BD
+## 302        YU/BD
+## 303        YU/BD
+## 304        YU/BD
+## 305        YU/BD
+## 306        YU/BD
+## 307          YUS
+## 308        YU/BD
+## 309        YU/BD
+## 310        YU/BD
+## 311        YU/BD
+## 312        YU/BD
+## 313        YU/BD
+## 314        YU/BD
+## 315        YU/BD
+## 316        YU/BD
+## 317        YU/BD
+## 318        YU/BD
+## 319        YU/BD
+## 320        YU/BD
+## 321        YU/BD
+## 322        YU/BD
+## 323        YU/BD
+## 324        YU/BD
+## 325        YU/BD
+## 326        YU/BD
+## 327        YU/BD
+## 328        YU/BD
+## 329        YU/BD
+## 330        YU/BD
+## 331        YU/BD
+## 332        YU/BD
+## 333        YU/BD
+## 334        YU/BD
+## 335        YU/BD
+## 336        YU/BD
+## 337        YU-BD
+## 338        YU/BD
+## 339        YU/BD
+## 340        YU/BD
+## 341        YU/BD
+## 342        YU/BD
+## 343        YU/BD
+## 344        YU/BD
+## 345        YU/BD
+## 346        YU/BD
+## 347        YU/BD
+## 348        YU/BD
+## 349        YU/BD
+## 350        YU/BD
+## 351        YU/BD
+## 352        YU/BD
+## 353        YU/BD
+## 354        YU/BD
+## 355        YU/BD
+## 356        YU/BD
+## 357        YU/BD
+## 358        YU/BD
+## 359        YU/BD
+## 360   16 MCCOWAN
+## 361        YU/BD
+## 362        YU/BD
+## 363        YU/BD
+## 364        YU/BD
+## 365        YU/BD
+## 366        YU/BD
+## 367        YU/BD
+## 368        YU/BD
+## 369        YU/BD
+## 370        YU/BD
+## 371        YU/BD
+## 372        YU/BD
+## 373        YU/BD
+## 374      YU / BD
+## 375       YU/ BD
+## 376        YU/BD
+## 377        YU/BD
+## 378        YU/BD
+## 379        YU/BD
+## 380        YU/BD
+## 381         &lt;NA&gt;
+## 382         &lt;NA&gt;
+## 383         &lt;NA&gt;
+## 384         &lt;NA&gt;
+## 385         &lt;NA&gt;
+## 386         &lt;NA&gt;
+## 387         &lt;NA&gt;
+## 388         &lt;NA&gt;
+## 389         &lt;NA&gt;
+## 390         &lt;NA&gt;
+## 391         &lt;NA&gt;
+## 392         &lt;NA&gt;
+## 393         &lt;NA&gt;
+## 394         &lt;NA&gt;
+## 395         &lt;NA&gt;
+## 396         &lt;NA&gt;
+## 397         &lt;NA&gt;
+## 398         &lt;NA&gt;
+## 399         &lt;NA&gt;
+## 400         &lt;NA&gt;
+## 401         &lt;NA&gt;
+## 402         &lt;NA&gt;
+## 403         &lt;NA&gt;
+## 404         &lt;NA&gt;
+## 405         &lt;NA&gt;
+## 406         &lt;NA&gt;
+## 407         &lt;NA&gt;
+## 408         &lt;NA&gt;
+## 409         &lt;NA&gt;
+## 410         &lt;NA&gt;
+## 411         &lt;NA&gt;
+## 412         &lt;NA&gt;
+## 413         &lt;NA&gt;
+## 414         &lt;NA&gt;
+## 415         &lt;NA&gt;
+## 416         &lt;NA&gt;
+## 417         &lt;NA&gt;
+## 418         &lt;NA&gt;
+## 419         &lt;NA&gt;
+## 420         &lt;NA&gt;
+## 421         &lt;NA&gt;
+## 422         &lt;NA&gt;
+## 423         &lt;NA&gt;
+## 424         &lt;NA&gt;
+## 425         &lt;NA&gt;
+## 426         &lt;NA&gt;
+## 427         &lt;NA&gt;
+## 428         &lt;NA&gt;
+## 429         &lt;NA&gt;
+## 430         &lt;NA&gt;
+## 431         &lt;NA&gt;
+## 432         &lt;NA&gt;
+## 433         &lt;NA&gt;
+## 434         &lt;NA&gt;
+## 435         &lt;NA&gt;
+## 436         &lt;NA&gt;
+## 437         &lt;NA&gt;
+## 438         &lt;NA&gt;
+## 439         &lt;NA&gt;
+## 440         &lt;NA&gt;
+## 441         &lt;NA&gt;
+## 442         &lt;NA&gt;
+## 443         &lt;NA&gt;
+## 444         &lt;NA&gt;
+## 445         &lt;NA&gt;
+## 446         &lt;NA&gt;
+## 447         &lt;NA&gt;
+## 448         &lt;NA&gt;
+## 449         &lt;NA&gt;
+## 450         &lt;NA&gt;
+## 451         &lt;NA&gt;
+## 452         &lt;NA&gt;
+## 453         &lt;NA&gt;
+## 454         &lt;NA&gt;
+## 455         &lt;NA&gt;
+## 456         &lt;NA&gt;
+## 457         &lt;NA&gt;
+## 458         &lt;NA&gt;
+## 459         &lt;NA&gt;
+## 460         &lt;NA&gt;
+## 461         &lt;NA&gt;
+## 462         &lt;NA&gt;
+## 463         &lt;NA&gt;
+## 464         &lt;NA&gt;
+## 465         &lt;NA&gt;
+## 466         &lt;NA&gt;
+## 467         &lt;NA&gt;
+## 468         &lt;NA&gt;
+## 469         &lt;NA&gt;
+## 470         &lt;NA&gt;
+## 471         &lt;NA&gt;
+## 472         &lt;NA&gt;
+## 473         &lt;NA&gt;
+## 474         &lt;NA&gt;
+## 475         &lt;NA&gt;
+## 476         &lt;NA&gt;
+## 477         &lt;NA&gt;
+## 478         &lt;NA&gt;
+## 479         &lt;NA&gt;
+## 480         &lt;NA&gt;
+## 481         &lt;NA&gt;
+## 482         &lt;NA&gt;
+## 483         &lt;NA&gt;
+## 484         &lt;NA&gt;
+## 485         &lt;NA&gt;
+## 486         &lt;NA&gt;
+## 487         &lt;NA&gt;
+## 488         &lt;NA&gt;
+## 489         &lt;NA&gt;
+## 490         &lt;NA&gt;
+## 491         &lt;NA&gt;
+## 492         &lt;NA&gt;
+## 493         &lt;NA&gt;
+## 494         &lt;NA&gt;
+## 495         &lt;NA&gt;
+## 496         &lt;NA&gt;
+## 497         &lt;NA&gt;
+## 498         &lt;NA&gt;
+## 499         &lt;NA&gt;
+## 500         &lt;NA&gt;
+## 501         &lt;NA&gt;
+## 502         &lt;NA&gt;
+## 503         &lt;NA&gt;
+## 504         &lt;NA&gt;
+## 505         &lt;NA&gt;
+## 506         &lt;NA&gt;
+## 507         &lt;NA&gt;
+## 508         &lt;NA&gt;
+## 509         &lt;NA&gt;
+## 510         &lt;NA&gt;
+## 511         &lt;NA&gt;
+## 512         &lt;NA&gt;
+## 513         &lt;NA&gt;
+## 514         &lt;NA&gt;
+## 515         &lt;NA&gt;
+## 516         &lt;NA&gt;
+## 517         &lt;NA&gt;
+## 518         &lt;NA&gt;
+## 519         &lt;NA&gt;
+## 520         &lt;NA&gt;
+## 521         &lt;NA&gt;
+## 522         &lt;NA&gt;
+## 523         &lt;NA&gt;
+## 524         &lt;NA&gt;
+## 525         &lt;NA&gt;
+## 526         &lt;NA&gt;
+## 527         &lt;NA&gt;
+## 528         &lt;NA&gt;
+## 529         &lt;NA&gt;
+## 530         &lt;NA&gt;
+## 531         &lt;NA&gt;
+## 532         &lt;NA&gt;
+## 533         &lt;NA&gt;
+## 534         &lt;NA&gt;
+## 535         &lt;NA&gt;
+## 536         &lt;NA&gt;
+## 537         &lt;NA&gt;
+## 538         &lt;NA&gt;
+## 539         &lt;NA&gt;
+## 540         &lt;NA&gt;
+## 541         &lt;NA&gt;
+## 542         &lt;NA&gt;
+## 543         &lt;NA&gt;
+## 544         &lt;NA&gt;
+## 545         &lt;NA&gt;
+## 546         &lt;NA&gt;
+## 547         &lt;NA&gt;
+## 548         &lt;NA&gt;
+## 549         &lt;NA&gt;
+## 550         &lt;NA&gt;
+## 551         &lt;NA&gt;
+## 552         &lt;NA&gt;
+## 553         &lt;NA&gt;
+## 554         &lt;NA&gt;
+## 555         &lt;NA&gt;
+## 556         &lt;NA&gt;
+## 557         &lt;NA&gt;
+## 558         &lt;NA&gt;
+## 559         &lt;NA&gt;
+## 560         &lt;NA&gt;
+## 561         &lt;NA&gt;
+## 562         &lt;NA&gt;
+## 563         &lt;NA&gt;
+## 564         &lt;NA&gt;
+## 565         &lt;NA&gt;
+## 566         &lt;NA&gt;
+## 567         &lt;NA&gt;
+## 568         &lt;NA&gt;
+## 569         &lt;NA&gt;
+## 570         &lt;NA&gt;
+## 571         &lt;NA&gt;
+## 572         &lt;NA&gt;
+## 573         &lt;NA&gt;
+## 574         &lt;NA&gt;
+## 575         &lt;NA&gt;
+## 576         &lt;NA&gt;
+## 577         &lt;NA&gt;
+## 578         &lt;NA&gt;
+## 579         &lt;NA&gt;
+## 580         &lt;NA&gt;
+## 581         &lt;NA&gt;
+## 582         &lt;NA&gt;
+## 583         &lt;NA&gt;
+## 584         &lt;NA&gt;
+## 585         &lt;NA&gt;
+## 586         &lt;NA&gt;
+## 587         &lt;NA&gt;
+## 588         &lt;NA&gt;
+## 589         &lt;NA&gt;
+## 590         &lt;NA&gt;
+## 591         &lt;NA&gt;
+## 592         &lt;NA&gt;
+## 593         &lt;NA&gt;
+## 594         &lt;NA&gt;
+## 595         &lt;NA&gt;
+## 596         &lt;NA&gt;
+## 597         &lt;NA&gt;
+## 598         &lt;NA&gt;
+## 599         &lt;NA&gt;
+## 600         &lt;NA&gt;
+## 601         &lt;NA&gt;
+## 602         &lt;NA&gt;
+## 603         &lt;NA&gt;
+## 604         &lt;NA&gt;
+## 605         &lt;NA&gt;
+## 606         &lt;NA&gt;
+## 607         &lt;NA&gt;
+## 608         &lt;NA&gt;
+## 609         &lt;NA&gt;
+## 610         &lt;NA&gt;
+## 611         &lt;NA&gt;
+## 612         &lt;NA&gt;
+## 613         &lt;NA&gt;
+## 614         &lt;NA&gt;
+## 615         &lt;NA&gt;
+## 616         &lt;NA&gt;
+## 617         &lt;NA&gt;
+## 618         &lt;NA&gt;
+## 619         &lt;NA&gt;
+## 620         &lt;NA&gt;
+## 621         &lt;NA&gt;
+## 622         &lt;NA&gt;
+## 623         &lt;NA&gt;
+## 624         &lt;NA&gt;
+## 625         &lt;NA&gt;
+## 626         &lt;NA&gt;
+## 627         &lt;NA&gt;
+## 628         &lt;NA&gt;
+## 629         &lt;NA&gt;
+## 630         &lt;NA&gt;
+## 631         &lt;NA&gt;
+## 632         &lt;NA&gt;
+## 633         &lt;NA&gt;
+## 634         &lt;NA&gt;
+## 635         &lt;NA&gt;
+## 636         &lt;NA&gt;
+## 637         &lt;NA&gt;
+## 638         &lt;NA&gt;
+## 639         &lt;NA&gt;
+## 640         &lt;NA&gt;
+## 641         &lt;NA&gt;
+## 642         &lt;NA&gt;
+## 643         &lt;NA&gt;
+## 644         &lt;NA&gt;
+## 645         &lt;NA&gt;
+## 646         &lt;NA&gt;
+## 647         &lt;NA&gt;
+## 648         &lt;NA&gt;
+## 649         &lt;NA&gt;
+## 650         &lt;NA&gt;
+## 651         &lt;NA&gt;
+## 652         &lt;NA&gt;
+## 653         &lt;NA&gt;
+## 654         &lt;NA&gt;
+## 655         &lt;NA&gt;
+## 656         &lt;NA&gt;
+## 657         &lt;NA&gt;
+## 658         &lt;NA&gt;
+## 659         &lt;NA&gt;
+## 660         &lt;NA&gt;
+## 661         &lt;NA&gt;
+## 662         &lt;NA&gt;
+## 663         &lt;NA&gt;
+## 664         &lt;NA&gt;
+## 665         &lt;NA&gt;
+## 666         &lt;NA&gt;
+## 667         &lt;NA&gt;
+## 668         &lt;NA&gt;
+## 669         &lt;NA&gt;
+## 670         &lt;NA&gt;
+## 671         &lt;NA&gt;
+## 672         &lt;NA&gt;
+## 673         &lt;NA&gt;
+## 674         &lt;NA&gt;
+## 675         &lt;NA&gt;
+## 676         &lt;NA&gt;
+## 677         &lt;NA&gt;
+## 678         &lt;NA&gt;
+## 679         &lt;NA&gt;
+## 680         &lt;NA&gt;
+## 681         &lt;NA&gt;
+## 682         &lt;NA&gt;
+## 683         &lt;NA&gt;
+## 684         &lt;NA&gt;
+## 685         &lt;NA&gt;
+## 686         &lt;NA&gt;
+## 687         &lt;NA&gt;
+## 688         &lt;NA&gt;
+## 689         &lt;NA&gt;
+## 690         &lt;NA&gt;
+## 691         &lt;NA&gt;
+## 692         &lt;NA&gt;
+## 693         &lt;NA&gt;
+## 694         &lt;NA&gt;
+## 695         &lt;NA&gt;
+## 696         &lt;NA&gt;
+## 697         &lt;NA&gt;
+## 698         &lt;NA&gt;
+## 699         &lt;NA&gt;
+## 700         &lt;NA&gt;
+## 701         &lt;NA&gt;
+## 702         &lt;NA&gt;
+## 703         &lt;NA&gt;
+## 704         &lt;NA&gt;
+## 705         &lt;NA&gt;
+## 706         &lt;NA&gt;
+## 707         &lt;NA&gt;
+## 708         &lt;NA&gt;
+## 709         &lt;NA&gt;
+## 710         &lt;NA&gt;
+## 711         &lt;NA&gt;
+## 712         &lt;NA&gt;
+## 713         &lt;NA&gt;
+## 714         &lt;NA&gt;
+## 715         &lt;NA&gt;
+## 716         &lt;NA&gt;
+## 717         &lt;NA&gt;
+## 718         &lt;NA&gt;
+## 719         &lt;NA&gt;
+## 720         &lt;NA&gt;
+## 721         &lt;NA&gt;
+## 722         &lt;NA&gt;
+## 723         &lt;NA&gt;
+## 724         &lt;NA&gt;
+## 725         &lt;NA&gt;
+## 726         &lt;NA&gt;
+## 727         &lt;NA&gt;
+## 728         &lt;NA&gt;
+## 729         &lt;NA&gt;
+## 730         &lt;NA&gt;
+## 731         &lt;NA&gt;
+## 732         &lt;NA&gt;
+## 733         &lt;NA&gt;
+## 734         &lt;NA&gt;
+## 735         &lt;NA&gt;
+## 736         &lt;NA&gt;
+## 737         &lt;NA&gt;
+## 738         &lt;NA&gt;
+## 739         &lt;NA&gt;
+## 740         &lt;NA&gt;
+## 741         &lt;NA&gt;
+## 742         &lt;NA&gt;
+## 743         &lt;NA&gt;
+## 744         &lt;NA&gt;
+## 745         &lt;NA&gt;
+## 746         &lt;NA&gt;
+## 747         &lt;NA&gt;
+## 748         &lt;NA&gt;
+## 749         &lt;NA&gt;
+## 750         &lt;NA&gt;
+## 751         &lt;NA&gt;
+## 752         &lt;NA&gt;
+## 753         &lt;NA&gt;
+## 754         &lt;NA&gt;
+## 755         &lt;NA&gt;
+## 756         &lt;NA&gt;
+## 757         &lt;NA&gt;
+## 758         &lt;NA&gt;
+## 759         &lt;NA&gt;
+## 760         &lt;NA&gt;
+## 761         &lt;NA&gt;
+## 762         &lt;NA&gt;
+## 763         &lt;NA&gt;
+## 764         &lt;NA&gt;
+## 765         &lt;NA&gt;
+## 766         &lt;NA&gt;
+## 767         &lt;NA&gt;
+## 768         &lt;NA&gt;
+## 769         &lt;NA&gt;
+## 770         &lt;NA&gt;
+## 771         &lt;NA&gt;
+## 772         &lt;NA&gt;
+## 773         &lt;NA&gt;
+## 774         &lt;NA&gt;
+## 775         &lt;NA&gt;
+## 776         &lt;NA&gt;
+## 777         &lt;NA&gt;
+## 778         &lt;NA&gt;
+## 779         &lt;NA&gt;
+## 780         &lt;NA&gt;
+## 781         &lt;NA&gt;
+## 782         &lt;NA&gt;
+## 783         &lt;NA&gt;
+## 784         &lt;NA&gt;
+## 785         &lt;NA&gt;
+## 786         &lt;NA&gt;
+## 787         &lt;NA&gt;
+## 788         &lt;NA&gt;
+## 789         &lt;NA&gt;
+## 790         &lt;NA&gt;
+## 791         &lt;NA&gt;
+## 792         &lt;NA&gt;
+## 793         &lt;NA&gt;
+## 794         &lt;NA&gt;
+## 795         &lt;NA&gt;
+## 796         &lt;NA&gt;
+## 797         &lt;NA&gt;
+## 798         &lt;NA&gt;
+## 799         &lt;NA&gt;
+## 800         &lt;NA&gt;
+## 801         &lt;NA&gt;
+## 802         &lt;NA&gt;
+## 803         &lt;NA&gt;
+## 804         &lt;NA&gt;
+## 805         &lt;NA&gt;
+## 806         &lt;NA&gt;
+## 807         &lt;NA&gt;
+## 808         &lt;NA&gt;
+## 809         &lt;NA&gt;
+## 810         &lt;NA&gt;
+## 811         &lt;NA&gt;
+## 812         &lt;NA&gt;
+## 813         &lt;NA&gt;
+## 814         &lt;NA&gt;
+## 815         &lt;NA&gt;
+## 816         &lt;NA&gt;
+## 817         &lt;NA&gt;
+## 818         &lt;NA&gt;
+## 819         &lt;NA&gt;
+## 820         &lt;NA&gt;
+## 821         &lt;NA&gt;
+## 822         &lt;NA&gt;
+## 823         &lt;NA&gt;
+## 824         &lt;NA&gt;
+## 825         &lt;NA&gt;
+## 826         &lt;NA&gt;
+## 827         &lt;NA&gt;
+## 828         &lt;NA&gt;
+## 829         &lt;NA&gt;
+## 830         &lt;NA&gt;
+## 831         &lt;NA&gt;
+## 832         &lt;NA&gt;
+## 833         &lt;NA&gt;
+## 834         &lt;NA&gt;
+## 835         &lt;NA&gt;
+## 836         &lt;NA&gt;
+## 837         &lt;NA&gt;
+## 838         &lt;NA&gt;
+## 839         &lt;NA&gt;
+## 840         &lt;NA&gt;
+## 841         &lt;NA&gt;
+## 842         &lt;NA&gt;
+## 843         &lt;NA&gt;
+## 844         &lt;NA&gt;
+## 845         &lt;NA&gt;
+## 846         &lt;NA&gt;
+## 847         &lt;NA&gt;
+## 848         &lt;NA&gt;
+## 849         &lt;NA&gt;
+## 850         &lt;NA&gt;
+## 851         &lt;NA&gt;
+## 852         &lt;NA&gt;
+## 853         &lt;NA&gt;
+## 854         &lt;NA&gt;
+## 855         &lt;NA&gt;
+## 856         &lt;NA&gt;
+## 857         &lt;NA&gt;
+## 858         &lt;NA&gt;
+## 859         &lt;NA&gt;
+## 860         &lt;NA&gt;
+## 861         &lt;NA&gt;
+## 862         &lt;NA&gt;
+## 863         &lt;NA&gt;
+## 864         &lt;NA&gt;
+## 865         &lt;NA&gt;
+## 866         &lt;NA&gt;
+## 867         &lt;NA&gt;
+## 868         &lt;NA&gt;
+## 869         &lt;NA&gt;
+## 870         &lt;NA&gt;
+## 871         &lt;NA&gt;
+## 872         &lt;NA&gt;
+## 873         &lt;NA&gt;
+## 874         &lt;NA&gt;
+## 875         &lt;NA&gt;
+## 876         &lt;NA&gt;
+## 877         &lt;NA&gt;
+## 878         &lt;NA&gt;
+## 879         &lt;NA&gt;
+## 880         &lt;NA&gt;
+## 881         &lt;NA&gt;
+## 882         &lt;NA&gt;
+## 883         &lt;NA&gt;
+## 884         &lt;NA&gt;
+## 885         &lt;NA&gt;
+## 886         &lt;NA&gt;
+## 887         &lt;NA&gt;
+## 888         &lt;NA&gt;
+## 889         &lt;NA&gt;
+## 890         &lt;NA&gt;
+## 891         &lt;NA&gt;
+## 892         &lt;NA&gt;
+## 893         &lt;NA&gt;
+## 894         &lt;NA&gt;
+## 895         &lt;NA&gt;
+## 896         &lt;NA&gt;
+## 897         &lt;NA&gt;
+## 898         &lt;NA&gt;
+## 899         &lt;NA&gt;
+## 900         &lt;NA&gt;
+## 901         &lt;NA&gt;
+## 902         &lt;NA&gt;
+## 903         &lt;NA&gt;
+## 904         &lt;NA&gt;
+## 905         &lt;NA&gt;
+## 906         &lt;NA&gt;
+## 907         &lt;NA&gt;
+## 908         &lt;NA&gt;
+## 909         &lt;NA&gt;
+## 910         &lt;NA&gt;
+## 911         &lt;NA&gt;
+## 912         &lt;NA&gt;
+## 913         &lt;NA&gt;
+## 914         &lt;NA&gt;
+## 915         &lt;NA&gt;
+## 916         &lt;NA&gt;
+## 917         &lt;NA&gt;
+## 918         &lt;NA&gt;
+## 919         &lt;NA&gt;
+## 920         &lt;NA&gt;
+## 921         &lt;NA&gt;
+## 922         &lt;NA&gt;
+## 923         &lt;NA&gt;
+## 924         &lt;NA&gt;
+## 925         &lt;NA&gt;
+## 926         &lt;NA&gt;
+## 927         &lt;NA&gt;
+## 928         &lt;NA&gt;
+## 929         &lt;NA&gt;
+## 930         &lt;NA&gt;
+## 931         &lt;NA&gt;
+## 932         &lt;NA&gt;
+## 933         &lt;NA&gt;
+## 934         &lt;NA&gt;
+## 935         &lt;NA&gt;
+## 936         &lt;NA&gt;
+## 937         &lt;NA&gt;
+## 938         &lt;NA&gt;
+## 939         &lt;NA&gt;
+## 940         &lt;NA&gt;
+## 941         &lt;NA&gt;
+## 942         &lt;NA&gt;
+## 943         &lt;NA&gt;
+## 944         &lt;NA&gt;
+## 945         &lt;NA&gt;
+## 946         &lt;NA&gt;
+## 947         &lt;NA&gt;
+## 948         &lt;NA&gt;
+## 949         &lt;NA&gt;
+## 950         &lt;NA&gt;
+## 951         &lt;NA&gt;
+## 952         &lt;NA&gt;
+## 953         &lt;NA&gt;
+## 954         &lt;NA&gt;
+## 955         &lt;NA&gt;
+## 956         &lt;NA&gt;
+## 957         &lt;NA&gt;
+## 958         &lt;NA&gt;
+## 959         &lt;NA&gt;
+## 960         &lt;NA&gt;
+## 961         &lt;NA&gt;
+## 962         &lt;NA&gt;
+## 963         &lt;NA&gt;
+## 964         &lt;NA&gt;
+## 965         &lt;NA&gt;
+## 966         &lt;NA&gt;
+## 967         &lt;NA&gt;
+## 968         &lt;NA&gt;
+## 969         &lt;NA&gt;
+## 970         &lt;NA&gt;
+## 971         &lt;NA&gt;
+## 972         &lt;NA&gt;
+## 973         &lt;NA&gt;
+## 974         &lt;NA&gt;
+## 975         &lt;NA&gt;
+## 976         &lt;NA&gt;
+## 977         &lt;NA&gt;
+## 978         &lt;NA&gt;
+## 979         &lt;NA&gt;
+## 980         &lt;NA&gt;
+## 981         &lt;NA&gt;
+## 982         &lt;NA&gt;
+## 983         &lt;NA&gt;
+## 984         &lt;NA&gt;
+## 985         &lt;NA&gt;
+## 986         &lt;NA&gt;
+## 987         &lt;NA&gt;
+## 988         &lt;NA&gt;
+## 989         &lt;NA&gt;
+## 990         &lt;NA&gt;
+## 991         &lt;NA&gt;
+## 992         &lt;NA&gt;
+## 993         &lt;NA&gt;
+## 994         &lt;NA&gt;
+## 995         &lt;NA&gt;
+## 996         &lt;NA&gt;
+## 997         &lt;NA&gt;
+## 998         &lt;NA&gt;
+## 999         &lt;NA&gt;
+## 1000        &lt;NA&gt;
+## 1001        &lt;NA&gt;
+## 1002        &lt;NA&gt;
+## 1003        &lt;NA&gt;
+## 1004        &lt;NA&gt;
+## 1005        &lt;NA&gt;
+## 1006        &lt;NA&gt;
+## 1007        &lt;NA&gt;
+## 1008        &lt;NA&gt;
+## 1009        &lt;NA&gt;
+## 1010        &lt;NA&gt;
+## 1011        &lt;NA&gt;
+## 1012        &lt;NA&gt;
+## 1013        &lt;NA&gt;
+## 1014        &lt;NA&gt;
+## 1015        &lt;NA&gt;
+## 1016        &lt;NA&gt;
+## 1017        &lt;NA&gt;
+## 1018        &lt;NA&gt;
+## 1019        &lt;NA&gt;
+## 1020        &lt;NA&gt;
+## 1021        &lt;NA&gt;
+## 1022        &lt;NA&gt;
+## 1023        &lt;NA&gt;
+## 1024        &lt;NA&gt;
+## 1025        &lt;NA&gt;
+## 1026        &lt;NA&gt;
+## 1027        &lt;NA&gt;
+## 1028        &lt;NA&gt;
+## 1029        &lt;NA&gt;
+## 1030        &lt;NA&gt;
+## 1031        &lt;NA&gt;
+## 1032        &lt;NA&gt;
+## 1033        &lt;NA&gt;
+## 1034        &lt;NA&gt;
+## 1035        &lt;NA&gt;
+## 1036        &lt;NA&gt;
+## 1037        &lt;NA&gt;
+## 1038        &lt;NA&gt;
+## 1039        &lt;NA&gt;
+## 1040        &lt;NA&gt;
+## 1041        &lt;NA&gt;
+## 1042        &lt;NA&gt;
+## 1043        &lt;NA&gt;
+## 1044        &lt;NA&gt;
+## 1045        &lt;NA&gt;
+## 1046        &lt;NA&gt;
+## 1047        &lt;NA&gt;
+## 1048        &lt;NA&gt;
+## 1049        &lt;NA&gt;
+## 1050        &lt;NA&gt;
+## 1051        &lt;NA&gt;
+## 1052        &lt;NA&gt;
+## 1053        &lt;NA&gt;
+## 1054        &lt;NA&gt;
+## 1055        &lt;NA&gt;
+## 1056        &lt;NA&gt;
+## 1057        &lt;NA&gt;
+## 1058        &lt;NA&gt;
+## 1059        &lt;NA&gt;
+## 1060        &lt;NA&gt;
+## 1061        &lt;NA&gt;
+## 1062        &lt;NA&gt;
+## 1063        &lt;NA&gt;
+## 1064        &lt;NA&gt;
+## 1065        &lt;NA&gt;
+## 1066        &lt;NA&gt;
+## 1067        &lt;NA&gt;
+## 1068        &lt;NA&gt;
+## 1069        &lt;NA&gt;
+## 1070        &lt;NA&gt;
+## 1071        &lt;NA&gt;
+## 1072        &lt;NA&gt;
+## 1073        &lt;NA&gt;
+## 1074        &lt;NA&gt;
+## 1075        &lt;NA&gt;
+## 1076        &lt;NA&gt;
+## 1077        &lt;NA&gt;
+## 1078        &lt;NA&gt;
+## 1079        &lt;NA&gt;
+## 1080        &lt;NA&gt;
+## 1081        &lt;NA&gt;
+## 1082        &lt;NA&gt;
+## 1083        &lt;NA&gt;
+## 1084        &lt;NA&gt;
+## 1085        &lt;NA&gt;
+## 1086        &lt;NA&gt;
+## 1087        &lt;NA&gt;
+## 1088        &lt;NA&gt;
+## 1089        &lt;NA&gt;
+## 1090        &lt;NA&gt;
+## 1091        &lt;NA&gt;
+## 1092        &lt;NA&gt;
+## 1093        &lt;NA&gt;
+## 1094        &lt;NA&gt;
+## 1095        &lt;NA&gt;
+## 1096        &lt;NA&gt;
+## 1097        &lt;NA&gt;
+## 1098        &lt;NA&gt;
+## 1099        &lt;NA&gt;
+## 1100        &lt;NA&gt;
+## 1101        &lt;NA&gt;
+## 1102        &lt;NA&gt;
+## 1103        &lt;NA&gt;
+## 1104        &lt;NA&gt;
+## 1105        &lt;NA&gt;
+## 1106        &lt;NA&gt;
+## 1107        &lt;NA&gt;
+## 1108        &lt;NA&gt;
+## 1109        &lt;NA&gt;
+## 1110        &lt;NA&gt;
+## 1111        &lt;NA&gt;
+## 1112        &lt;NA&gt;
+## 1113        &lt;NA&gt;
+## 1114        &lt;NA&gt;
+## 1115        &lt;NA&gt;
+## 1116        &lt;NA&gt;
+## 1117        &lt;NA&gt;
+## 1118        &lt;NA&gt;
+## 1119        &lt;NA&gt;
+## 1120        &lt;NA&gt;
+## 1121        &lt;NA&gt;
+## 1122        &lt;NA&gt;
+## 1123        &lt;NA&gt;
+## 1124        &lt;NA&gt;
+## 1125        &lt;NA&gt;
+## 1126        &lt;NA&gt;
+## 1127        &lt;NA&gt;
+## 1128        &lt;NA&gt;
+## 1129        &lt;NA&gt;
+## 1130        &lt;NA&gt;
+## 1131        &lt;NA&gt;
+## 1132        &lt;NA&gt;
+## 1133        &lt;NA&gt;
+## 1134        &lt;NA&gt;
+## 1135        &lt;NA&gt;
+## 1136        &lt;NA&gt;
+## 1137        &lt;NA&gt;
+## 1138        &lt;NA&gt;
+## 1139        &lt;NA&gt;
+## 1140        &lt;NA&gt;
+## 1141        &lt;NA&gt;
+## 1142        &lt;NA&gt;
+## 1143        &lt;NA&gt;
+## 1144        &lt;NA&gt;
+## 1145        &lt;NA&gt;
+## 1146        &lt;NA&gt;
+## 1147        &lt;NA&gt;
+## 1148        &lt;NA&gt;
+## 1149        &lt;NA&gt;
+## 1150        &lt;NA&gt;
+## 1151        &lt;NA&gt;
+## 1152        &lt;NA&gt;
+## 1153        &lt;NA&gt;
+## 1154        &lt;NA&gt;
+## 1155        &lt;NA&gt;
+## 1156        &lt;NA&gt;
+## 1157        &lt;NA&gt;
+## 1158        &lt;NA&gt;
+## 1159        &lt;NA&gt;
+## 1160        &lt;NA&gt;
+## 1161        &lt;NA&gt;
+## 1162        &lt;NA&gt;
+## 1163        &lt;NA&gt;
+## 1164        &lt;NA&gt;
+## 1165        &lt;NA&gt;
+## 1166        &lt;NA&gt;
+## 1167        &lt;NA&gt;
+## 1168        &lt;NA&gt;
+## 1169        &lt;NA&gt;
+## 1170        &lt;NA&gt;
+## 1171        &lt;NA&gt;
+## 1172        &lt;NA&gt;
+## 1173        &lt;NA&gt;
+## 1174        &lt;NA&gt;
+## 1175        &lt;NA&gt;
+## 1176        &lt;NA&gt;
+## 1177        &lt;NA&gt;
+## 1178        &lt;NA&gt;
+## 1179        &lt;NA&gt;
+## 1180        &lt;NA&gt;
+## 1181        &lt;NA&gt;
+## 1182        &lt;NA&gt;
+## 1183        &lt;NA&gt;
+## 1184        &lt;NA&gt;
+## 1185        &lt;NA&gt;
+## 1186        &lt;NA&gt;
+## 1187        &lt;NA&gt;
+## 1188        &lt;NA&gt;
+## 1189        &lt;NA&gt;
+## 1190        &lt;NA&gt;
+## 1191        &lt;NA&gt;
+## 1192        &lt;NA&gt;
+## 1193        &lt;NA&gt;
+## 1194        &lt;NA&gt;
+## 1195        &lt;NA&gt;
+## 1196        &lt;NA&gt;
+## 1197        &lt;NA&gt;
+## 1198        &lt;NA&gt;
+## 1199        &lt;NA&gt;
+## 1200        &lt;NA&gt;
+## 1201        &lt;NA&gt;
+## 1202        &lt;NA&gt;
+## 1203        &lt;NA&gt;
+## 1204        &lt;NA&gt;
+## 1205        &lt;NA&gt;
+## 1206        &lt;NA&gt;
+## 1207        &lt;NA&gt;
+## 1208        &lt;NA&gt;
+## 1209        &lt;NA&gt;
+## 1210        &lt;NA&gt;
+## 1211        &lt;NA&gt;
+## 1212        &lt;NA&gt;
+## 1213        &lt;NA&gt;
+## 1214        &lt;NA&gt;
+## 1215        &lt;NA&gt;
+## 1216        &lt;NA&gt;
+## 1217        &lt;NA&gt;
+## 1218        &lt;NA&gt;
+## 1219        &lt;NA&gt;
+## 1220        &lt;NA&gt;
+## 1221        &lt;NA&gt;
+## 1222        &lt;NA&gt;
+## 1223        &lt;NA&gt;
+## 1224        &lt;NA&gt;
+## 1225        &lt;NA&gt;
+## 1226        &lt;NA&gt;
+## 1227        &lt;NA&gt;
+## 1228        &lt;NA&gt;
+## 1229        &lt;NA&gt;
+## 1230        &lt;NA&gt;
+## 1231        &lt;NA&gt;
+## 1232        &lt;NA&gt;
+## 1233        &lt;NA&gt;
+## 1234        &lt;NA&gt;
+## 1235        &lt;NA&gt;
+## 1236        &lt;NA&gt;
+## 1237        &lt;NA&gt;
+## 1238        &lt;NA&gt;
+## 1239        &lt;NA&gt;
+## 1240        &lt;NA&gt;
+## 1241        &lt;NA&gt;
+## 1242        &lt;NA&gt;
+## 1243        &lt;NA&gt;
+## 1244        &lt;NA&gt;
+## 1245        &lt;NA&gt;
+## 1246        &lt;NA&gt;
+## 1247        &lt;NA&gt;
+## 1248        &lt;NA&gt;
+## 1249        &lt;NA&gt;
+## 1250        &lt;NA&gt;
+## 1251        &lt;NA&gt;
+## 1252        &lt;NA&gt;
+## 1253        &lt;NA&gt;
+## 1254        &lt;NA&gt;
+## 1255        &lt;NA&gt;
+## 1256        &lt;NA&gt;
+## 1257        &lt;NA&gt;
+## 1258        &lt;NA&gt;
+## 1259        &lt;NA&gt;
+## 1260        &lt;NA&gt;
+## 1261        &lt;NA&gt;
+## 1262        &lt;NA&gt;
+## 1263        &lt;NA&gt;
+## 1264        &lt;NA&gt;
+## 1265        &lt;NA&gt;
+## 1266        &lt;NA&gt;
+## 1267        &lt;NA&gt;
+## 1268        &lt;NA&gt;
+## 1269        &lt;NA&gt;
+## 1270        &lt;NA&gt;
+## 1271        &lt;NA&gt;
+## 1272        &lt;NA&gt;
+## 1273        &lt;NA&gt;
+## 1274        &lt;NA&gt;
+## 1275        &lt;NA&gt;
+## 1276        &lt;NA&gt;
+## 1277        &lt;NA&gt;
+## 1278        &lt;NA&gt;
+## 1279        &lt;NA&gt;
+## 1280        &lt;NA&gt;
+## 1281        &lt;NA&gt;
+## 1282        &lt;NA&gt;
+## 1283        &lt;NA&gt;
+## 1284        &lt;NA&gt;
+## 1285        &lt;NA&gt;
+## 1286        &lt;NA&gt;
+## 1287        &lt;NA&gt;
+## 1288        &lt;NA&gt;
+## 1289        &lt;NA&gt;
+## 1290        &lt;NA&gt;
+## 1291        &lt;NA&gt;
+## 1292        &lt;NA&gt;
+## 1293        &lt;NA&gt;
+## 1294        &lt;NA&gt;
+## 1295        &lt;NA&gt;
+## 1296        &lt;NA&gt;
+## 1297        &lt;NA&gt;
+## 1298        &lt;NA&gt;
+## 1299        &lt;NA&gt;
+## 1300        &lt;NA&gt;
+## 1301        &lt;NA&gt;
+## 1302        &lt;NA&gt;
+## 1303        &lt;NA&gt;
+## 1304        &lt;NA&gt;
+## 1305        &lt;NA&gt;
+## 1306        &lt;NA&gt;
+## 1307        &lt;NA&gt;
+## 1308        &lt;NA&gt;
+## 1309        &lt;NA&gt;
+## 1310        &lt;NA&gt;
+## 1311        &lt;NA&gt;
+## 1312        &lt;NA&gt;
+## 1313        &lt;NA&gt;
+## 1314        &lt;NA&gt;
+## 1315        &lt;NA&gt;
+## 1316        &lt;NA&gt;
+## 1317        &lt;NA&gt;
+## 1318        &lt;NA&gt;
+## 1319        &lt;NA&gt;
+## 1320        &lt;NA&gt;
+## 1321        &lt;NA&gt;
+## 1322        &lt;NA&gt;
+## 1323        &lt;NA&gt;
+## 1324        &lt;NA&gt;
+## 1325        &lt;NA&gt;
+## 1326        &lt;NA&gt;
+## 1327        &lt;NA&gt;
+## 1328        &lt;NA&gt;
+## 1329        &lt;NA&gt;
+## 1330        &lt;NA&gt;
+## 1331        &lt;NA&gt;
+## 1332        &lt;NA&gt;
+## 1333        &lt;NA&gt;
+## 1334        &lt;NA&gt;
+## 1335        &lt;NA&gt;
+## 1336        &lt;NA&gt;
+## 1337        &lt;NA&gt;
+## 1338        &lt;NA&gt;
+## 1339        &lt;NA&gt;
+## 1340        &lt;NA&gt;
+## 1341        &lt;NA&gt;
+## 1342        &lt;NA&gt;
+## 1343        &lt;NA&gt;
+## 1344        &lt;NA&gt;
+## 1345        &lt;NA&gt;
+## 1346        &lt;NA&gt;
+## 1347        &lt;NA&gt;
+## 1348        &lt;NA&gt;
+## 1349        &lt;NA&gt;
+## 1350        &lt;NA&gt;
+## 1351        &lt;NA&gt;
+## 1352        &lt;NA&gt;
+## 1353        &lt;NA&gt;
+## 1354        &lt;NA&gt;
+## 1355        &lt;NA&gt;
+## 1356        &lt;NA&gt;
+## 1357        &lt;NA&gt;
+## 1358        &lt;NA&gt;
+## 1359        &lt;NA&gt;
+## 1360        &lt;NA&gt;
+## 1361        &lt;NA&gt;
+## 1362        &lt;NA&gt;
+## 1363        &lt;NA&gt;
+## 1364        &lt;NA&gt;
+## 1365        &lt;NA&gt;
+## 1366        &lt;NA&gt;
+## 1367        &lt;NA&gt;
+## 1368        &lt;NA&gt;
+## 1369        &lt;NA&gt;
+## 1370        &lt;NA&gt;
+## 1371        &lt;NA&gt;
+## 1372        &lt;NA&gt;
+## 1373        &lt;NA&gt;
+## 1374        &lt;NA&gt;
+## 1375        &lt;NA&gt;
+## 1376        &lt;NA&gt;
+## 1377        &lt;NA&gt;
+## 1378        &lt;NA&gt;
+## 1379        &lt;NA&gt;
+## 1380        &lt;NA&gt;
+## 1381        &lt;NA&gt;
+## 1382        &lt;NA&gt;
+## 1383        &lt;NA&gt;
+## 1384        &lt;NA&gt;
+## 1385        &lt;NA&gt;
+## 1386        &lt;NA&gt;
+## 1387        &lt;NA&gt;
+## 1388        &lt;NA&gt;
+## 1389        &lt;NA&gt;
+## 1390        &lt;NA&gt;
+## 1391        &lt;NA&gt;
+## 1392        &lt;NA&gt;
+## 1393        &lt;NA&gt;
+## 1394        &lt;NA&gt;
+## 1395        &lt;NA&gt;
+## 1396        &lt;NA&gt;
+## 1397        &lt;NA&gt;
+## 1398        &lt;NA&gt;
+## 1399        &lt;NA&gt;
+## 1400        &lt;NA&gt;
+## 1401        &lt;NA&gt;
+## 1402        &lt;NA&gt;
+## 1403        &lt;NA&gt;
+## 1404        &lt;NA&gt;
+## 1405        &lt;NA&gt;
+## 1406        &lt;NA&gt;
+## 1407        &lt;NA&gt;
+## 1408        &lt;NA&gt;
+## 1409        &lt;NA&gt;
+## 1410        &lt;NA&gt;
+## 1411        &lt;NA&gt;
+## 1412        &lt;NA&gt;
+## 1413        &lt;NA&gt;
+## 1414        &lt;NA&gt;
+## 1415        &lt;NA&gt;
+## 1416        &lt;NA&gt;
+```
+
+```
+## Error: assertr stopped execution
+```
+
+
+---
+
+When all assumptions are satisfied, the result is just the original data set.
+
+It can be piped directly for analysis. 
+
+--
+
+
+
+
+```r
+delays_clean %&gt;% 
+  chain_start() %&gt;%
+  assert(in_set("YU", "BD", "SHP", "SRT"), line) %&gt;%
+  assert(within_bounds(0, Inf), min_delay) %&gt;%
+  assert(not_na, min_delay) %&gt;%
+  chain_end() %&gt;%
+  group_by(line, description) %&gt;%
+  summarise(delays = sum(min_delay)) %&gt;%
+  arrange(-delays) %&gt;%
+  slice(1:5) %&gt;%
+  ggplot(aes(x = description,
+             y = delays)) +
+  geom_col() + 
+  facet_wrap(vars(line), 
+             scales = "fixed",
+             nrow = 1) +
+  coord_flip()
+```
+
+---
+
+&lt;img src="2019-03-05-rladies-rug-kickoff_files/figure-html/asumptions-met-plot-output-1.png" width="100%" /&gt;
+
+--
+
+Where's "Unauthorized at Track Level"? 🤔
+
+---
+layout:false
+
+# Wrapping up
+
+🏊‍♂️ Be weary of diving right into results.
+
+🔍 Efficiently visualize your data to verify or build mental models.
+
+🕳 Be liberal with rabbit holes, investigations, and edge cases.
+
+🗣 Codify your assumptions so that it is them, not you, who fail spectacularly!
+
+---
+
+# Thanks!
+
+Toronto Open Data: [bit.ly/toronto-open-data](http://bit.ly/toronto-open-data)
+
+`visdat` package vignette: [bit.ly/visdat-docs](http://bit.ly/visdat-docs)
+
+`skimr` package vignette: [bit.ly/skimr-docs](http://bit.ly/skimr-docs)
+
+`assertr` package vignette: [bit.ly/assertr-docs](http://bit.ly/assertr-docs)
+
+Slides: [bit.ly/rladies-to-kickoff](http://bit.ly/rladies-to-kickoff)
+
+Twitter: @sharlagelfand
+    </textarea>
+<script src="libs/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightStyle": "github",
+"highlightLines": true,
+"countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function() {
+  var d = document, s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})();</script>
+
+<script>
+(function() {
+  var i, text, code, codes = document.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+})();
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

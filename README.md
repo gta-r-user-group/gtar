@@ -26,3 +26,14 @@ devtools::install_github("gta-r-user-group/gtar")
 Please note that the ‘gtar’ project is released with a [Contributor Code
 of Conduct](CODE_OF_CONDUCT.md). By contributing to this project, you
 agree to abide by its terms.
+
+## Materials
+
+### 2019-03-05: GTA RUG and R-Ladies Toronto Kickoff
+
+  - [`gt`
+    materials](https://github.com/gta-r-user-group/gtar/tree/master/2019-03-05/rich-i)
+  - Opinionated Strategies for Uncharted
+        Territories
+      - [Materials](https://github.com/gta-r-user-group/gtar/tree/master/2019-03-05/opinionated-strategies-uncharted-territories)
+      - [Slides](https://sharla.party/talks/rladies-rug-kickoff.html#1)
