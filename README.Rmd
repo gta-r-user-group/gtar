@@ -35,6 +35,10 @@ Please note that the 'gtar' project is released with a [Contributor Code of Cond
 
 ## Materials
 
+### 2019-04-09: GTA R Meetup
+
+* [Dean Attali](https://deanattali.com/) talk: [useR 2017 attendance Shiny app](https://daattali.com/shiny/user2017/) and [code on GitHub](https://github.com/daattali/user2017)
+
 ### 2019-03-05: GTA RUG and R-Ladies Toronto Kickoff
 
 * [`gt` materials](https://github.com/gta-r-user-group/gtar/tree/master/2019-03-05/rich-i)
