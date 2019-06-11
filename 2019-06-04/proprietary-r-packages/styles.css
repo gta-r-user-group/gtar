@@ -1,0 +1,44 @@
+/* Emulate unconj.ca */
+
+h1, h2, h3 {
+    font-family: "PT Sans Narrow", "Helvetica", "Arial", sans-serif;
+    font-weight: 700;
+    color: #313131;
+}
+
+slides > slide {
+    /* font-family: "PT Serif", "Verdana", serif; */
+    font-family: "PT Sans", "Helvetica", "Arial", sans-serif;
+    text-rendering: optimizeLegibility;
+    color: #515151;
+}
+
+slide strong {
+  /* color: #303030; */
+  color: #bf616a;
+}
+
+a {
+    color: #099;
+    transition: color .1s ease-in-out;
+    text-decoration: none;
+    border-bottom: none;
+}
+
+a:hover {
+    text-decoration: none;
+    color: #069;
+}
+
+code {
+  padding: 0 0.5em;
+  font-size: 85%;
+  color: #bf616a;
+  background-color: #f9f9f9;
+  border-radius: 3px;
+}
+
+/* These should be alt= but are <p> instead. Hide them. */
+.caption {
+    display: none;
+}
