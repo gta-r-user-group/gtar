@@ -31,20 +31,42 @@ agree to abide by its terms.
 
 ## Materials
 
+### 2019-09-10: GTA R Meetup
+
+  - [Shreejoy Tipathy](https://triplab.org/) talk: [Come for the machine
+    learning, stay for the data
+    science](https://github.com/gta-r-user-group/gtar/tree/master/2019-09-09/neuroinformatics_data_science.pdf)
+  - [Sharla Gelfand](https://twitter.com/sharlagelfand) Open Data
+    Toronto:
+      - [Demo](https://github.com/gta-r-user-group/gtar/tree/master/2019-09-09/opendatatoronto/opendatatoronto-demo.md)
+      - [Toronto Open Data Portal](https://open.toronto.ca/)
+      - [`opendatatoronto` R
+        Package](https://sharlagelfand.github.io/opendatatoronto/)
+
+### 2019-06-04: GTA R Meetup
+
+  - [Aaron Jacobs](https://unconj.ca/blog/) talk: [Proprietary R
+    Packages](https://github.com/gta-r-user-group/gtar/tree/master/2019-06-04/proprietary-r-packages/presentation.Rmd)
+  - [Andy Pryke](http://www.andypryke.com/) talk: [R in
+    Production](https://github.com/gta-r-user-group/gtar/tree/master/2019-06-04/R-in-Production/R-in-Production-Andy-Pryke.pdf)
+
 ### 2019-04-09: GTA R Meetup
 
   - [Dean Attali](https://deanattali.com/) talk: [useR 2017 attendance
     Shiny app](https://daattali.com/shiny/user2017/) and [code on
     GitHub](https://github.com/daattali/user2017)
-  - [Morgan Taschuk](https://morgantaschuk.com/) talk: [Making research software more 
-    robust](https://docs.google.com/presentation/d/1cgFwOn37HDEzIqZIiCI1GVhVv9NS2HPcflp13vNQX0w/edit?usp=sharing) 
-    and [paper](https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1005412) 
-  
+  - [Morgan Taschuk](https://morgantaschuk.com/) talk: [Making research
+    software more
+    robust](https://docs.google.com/presentation/d/1cgFwOn37HDEzIqZIiCI1GVhVv9NS2HPcflp13vNQX0w/edit?usp=sharing)
+    and
+    [paper](https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1005412)
+
 ### 2019-03-05: GTA RUG and R-Ladies Toronto Kickoff
 
-  - [`gt`
+  - [Rich Iannone](https://twitter.com/riannone): [`gt`
     materials](https://github.com/gta-r-user-group/gtar/tree/master/2019-03-05/rich-i)
-  - Opinionated Strategies for Uncharted
+  - [Sharla Gelfand](https://twitter.com/sharlagelfand): Opinionated
+    Strategies for Uncharted
         Territories
       - [Materials](https://github.com/gta-r-user-group/gtar/tree/master/2019-03-05/opinionated-strategies-for-uncharted-territories)
       - [Slides](https://sharla.party/talks/rladies-rug-kickoff.html#1)

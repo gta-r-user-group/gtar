@@ -1,0 +1,153 @@
+---
+title: "Toronto Open Data"
+output: github_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, error = TRUE)
+```
+
+http://bit.ly/opendatatoronto-demo
+
+# Toronto Open Data
+
+https://open.toronto.ca/
+
+Data around Toronto's population, infrastructure, services, etc.
+
+Let's read in the data...
+
+```{r read_data}
+# <find the data and read it in>
+```
+
+# `opendatatoronto`
+
+There is a growing demand for open data and increased momentum in Toronto's civic spaces.
+
+Demand for more data and more functionality.
+
+https://sharlagelfand.github.io/opendatatoronto/
+
+```{r install_opendatatoronto}
+# install.packages("devtools") # if you don't have devtools
+# devtools::install_github("sharlagelfand/opendatatoronto")
+```
+
+## Look at the data set
+
+In the portal, data sets are called packages. Yes I know.
+
+```{r show_package}
+library(opendatatoronto)
+
+# <show the package metadata>
+```
+
+The actual datasets are called resources:
+
+```{r show_resources}
+# <show the resurces available in the package>
+```
+
+## Get the data
+
+You can get the resource directly in R, without having to download it first!
+
+```{r}
+apartments <- # <get the resource directly into R>
+```
+
+## Clean the data
+
+The data's variable names are annoying to work with.
+
+```{r clean_data}
+library(janitor)
+
+apartments <- apartments %>%
+  # <function for cleaning the data's names>
+```
+
+Missing values are "N/A", not NA
+
+Tedious to do it one by one...
+
+```{r clean_data_part_2}
+library(dplyr)
+
+apartments %>%
+  mutate(balcony_guards = ifelse(balcony_guards == "N/A", NA, balcony_guards),
+         confirmed_storeys = ifelse(confirmed_storeys == "N/A", NA, confirmed_storeys))
+```
+
+```{r clean_data_part_3}
+library(naniar)
+
+apartments <- apartments %>%
+  # <function to replace all "N/A" to NA!>
+```
+
+I know I want to look at data over time, so let's clean the year built variable too!
+
+```{r clean_year_built}
+apartments <- apartments %>%
+  # <convert the year to numeric>
+```
+
+Let's look at how many years of data there are:
+
+```{r year_built_histogram}
+library(ggplot2)
+
+# <histogram of year built>
+```
+
+Let's just look at 1900 onwards.
+
+```{r data_after_1900}
+apartments_built_after_1900 <- apartments %>%
+  # <filter to include 1900 onwards only>
+```
+
+## Plot year built versus number of storeys
+
+Has the number of storeys in an apartment building increased over time?
+
+```{r year_built_vs_storys}
+# <plot of year built versus number of storeys>
+```
+
+Ok, that's a lot of information. Let's look by decade instead!
+
+```{r add_decade}
+# <code to get decade>
+```
+
+Plot number of storeys by decade built instead
+
+```{r}
+# <plot number of storeys by decade>
+```
+
+Can't see all the points! Make them visible.
+
+```{r}
+# <code to make all data visible>
+```
+
+Take a sad plot and make it better!
+
+```{r}
+# <show labels for all decades>
+# <clean up axis labels, add title, add data source)
+# <add theme>
+# <add colour?>
+# <make text visible on screen?>
+```
+
+Please let me know if you have any issues!
+
+https://github.com/sharlagelfand/opendatatoronto/issues
