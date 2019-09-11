@@ -63,9 +63,10 @@ agree to abide by its terms.
 
 ### 2019-03-05: GTA RUG and R-Ladies Toronto Kickoff
 
-  - [`gt`
+  - [Rich Iannone](https://twitter.com/riannone): [`gt`
     materials](https://github.com/gta-r-user-group/gtar/tree/master/2019-03-05/rich-i)
-  - Opinionated Strategies for Uncharted
+  - [Sharla Gelfand](https://twitter.com/sharlagelfand): Opinionated
+    Strategies for Uncharted
         Territories
       - [Materials](https://github.com/gta-r-user-group/gtar/tree/master/2019-03-05/opinionated-strategies-for-uncharted-territories)
       - [Slides](https://sharla.party/talks/rladies-rug-kickoff.html#1)
