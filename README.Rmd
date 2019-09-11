@@ -35,6 +35,14 @@ Please note that the 'gtar' project is released with a [Contributor Code of Cond
 
 ## Materials
 
+### 2019-09-10: GTA R Meetup
+
+* [Shreejoy Tipathy](https://triplab.org/) talk: [Come for the machine learning, stay for the data science](https://github.com/gta-r-user-group/gtar/tree/master/2019-09-09/neuroinformatics_data_science.pdf)
+* [Sharla Gelfand](https://twitter.com/sharlagelfand) Open Data Toronto:
+    * [Demo](https://github.com/gta-r-user-group/gtar/tree/master/2019-09-09/opendatatoronto/opendatatoronto-demo.md)
+    * [Toronto Open Data Portal](https://open.toronto.ca/)
+    * [`opendatatoronto` R Package](https://sharlagelfand.github.io/opendatatoronto/)
+
 ### 2019-04-09: GTA R Meetup
 
 * [Dean Attali](https://deanattali.com/) talk: [useR 2017 attendance Shiny app](https://daattali.com/shiny/user2017/) and [code on GitHub](https://github.com/daattali/user2017)
