@@ -43,6 +43,13 @@ agree to abide by its terms.
       - [`opendatatoronto` R
         Package](https://sharlagelfand.github.io/opendatatoronto/)
 
+### 2019-06-04: GTA R Meetup
+
+  - [Aaron Jacobs](https://unconj.ca/blog/) talk: [Proprietary R
+    Packages](https://github.com/gta-r-user-group/gtar/tree/master/2019-06-04/proprietary-r-packages/presentation.Rmd)
+  - [Andy Pryke](http://www.andypryke.com/) talk: [R in
+    Production](https://github.com/gta-r-user-group/gtar/tree/master/2019-06-04/R-in-Production/R-in-Production-Andy-Pryke.pdf)
+
 ### 2019-04-09: GTA R Meetup
 
   - [Dean Attali](https://deanattali.com/) talk: [useR 2017 attendance
