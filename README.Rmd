@@ -35,6 +35,11 @@ Please note that the 'gtar' project is released with a [Contributor Code of Cond
 
 ## Materials
 
+### 2019-12-03: GTA R Meetup
+
+* [Ken Butler](http://ritsokiguess.site/home/) "From Longer and Wider, We Stand On Guard for Thee"
+    * [R studio project](https://github.com/nxskok/rmeetup) containing talk, data files etc.
+
 ### 2019-09-10: GTA R Meetup
 
 * [Shreejoy Tipathy](https://triplab.org/) talk: [Come for the machine learning, stay for the data science](https://github.com/gta-r-user-group/gtar/tree/master/2019-09-09/neuroinformatics_data_science.pdf)
