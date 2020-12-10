@@ -31,6 +31,13 @@ agree to abide by its terms.
 
 ## Materials
 
+### 2020-12-09: Our First Virtual Meetup
+
+- [Tanya Cashorali](https://twitter.com/tanyacash21) talk: [Anomaly Detection in Practice: Industry Use Cases with Shiny](https://drive.google.com/file/d/1Uc_2PAzg1Ete40fyxyknbcPamcvSS-_T/view?usp=drive_web)
+- [Yoni Sidi](https://twitter.com/yoniceedee) talk: [{reactor} package for unit testing shiny reactivity](https://yonicd.github.io/reactor)
+  - [{reactor}](https://www.github.com/yonicd/reactor)
+  - [{whereami}](https://www.github.com/yonicd/whereami)
+
 ### 2019-09-10: GTA R Meetup
 
   - [Shreejoy Tipathy](https://triplab.org/) talk: [Come for the machine
